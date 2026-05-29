@@ -103,7 +103,8 @@ export async function handleAiReviewRequest(payload, fetcher = fetch) {
   }
 
   const prompt = buildPrompt(input, ruleReport);
-  const response = await fetcher(buildModelEndpoint(llmConfig), {
+  const endpoint = buildModelEndpoint(llmConfig);
+  const modelResponse = await requestModel(fetcher, endpoint, {
     body: JSON.stringify(buildModelRequestBody(llmConfig, prompt)),
     headers: {
       Authorization: `Bearer ${llmConfig.apiKey}`,
@@ -112,12 +113,16 @@ export async function handleAiReviewRequest(payload, fetcher = fetch) {
     method: "POST",
   });
 
-  const data = await response.json();
-  if (!response.ok) {
+  if (!modelResponse.ok) {
+    return modelResponse;
+  }
+
+  const data = await safeReadJson(modelResponse.value);
+  if (!modelResponse.value.ok) {
     return {
-      status: response.status,
+      status: modelResponse.value.status,
       body: {
-        error: data?.error?.message || `大模型 API 请求失败：${response.status}`,
+        error: buildModelErrorMessage(data, modelResponse.value.status),
       },
     };
   }
@@ -135,6 +140,46 @@ export async function handleAiReviewRequest(payload, fetcher = fetch) {
       body: { error: "AI 返回结果不是有效 JSON，请检查模型是否支持 JSON 输出。" },
     };
   }
+}
+
+async function requestModel(fetcher, endpoint, options) {
+  try {
+    return {
+      ok: true,
+      value: await fetcher(endpoint, options),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 502,
+      body: {
+        error: `无法连接大模型接口：${error instanceof Error ? error.message : "网络请求失败"}`,
+      },
+    };
+  }
+}
+
+async function safeReadJson(response) {
+  const text = await response.text();
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { rawText: text.slice(0, 400) };
+  }
+}
+
+function buildModelErrorMessage(data, status) {
+  const message =
+    data?.error?.message ||
+    data?.message ||
+    data?.rawText ||
+    `HTTP ${status}`;
+
+  return `大模型 API 请求失败：${message}`;
 }
 
 export function buildChatCompletionsUrl(baseUrl) {

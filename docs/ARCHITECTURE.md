@@ -76,6 +76,7 @@ AI 代码评审通过后端接口完成，支持页面传入第三方 OpenAI-com
 
 - `server/aiReviewCore.mjs`：构造大模型评审 prompt，按协议调用 Chat Completions 或 Responses API，并解析结构化 JSON。
 - `server/aiReviewServer.mjs`：本地开发 API 服务。
+- `vite.config.js`：开发模式内置 `/api/ai-review` 中间件，避免只启动前端时出现代理 500。
 - `api/ai-review.js`：Vercel 部署入口。
 
 前端调用 `/api/ai-review` 时会传入 `协议`、`BASE_URL`、`API_KEY`、`MODEL`。后端也支持 `OPENAI_PROTOCOL`、`OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL` 作为默认配置。

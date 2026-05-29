@@ -161,4 +161,67 @@ describe("handleAiReviewRequest", () => {
       },
     });
   });
+
+  it("returns a helpful error when the model endpoint cannot be reached", async () => {
+    const fetcher = async () => {
+      throw new Error("connect ECONNREFUSED");
+    };
+
+    await expect(
+      handleAiReviewRequest(
+        {
+          input: {
+            title: "feat: demo",
+            description: "demo",
+            diff: "diff --git a/a b/a",
+          },
+          llmConfig: {
+            apiKey: "sk-test",
+            baseUrl: "http://127.0.0.1:9",
+            model: "third-party-model",
+            protocol: "chat_completions",
+          },
+          ruleReport: { findings: [] },
+        },
+        fetcher,
+      ),
+    ).resolves.toMatchObject({
+      status: 502,
+      body: {
+        error: "无法连接大模型接口：connect ECONNREFUSED",
+      },
+    });
+  });
+
+  it("returns upstream non-json error bodies instead of throwing 500", async () => {
+    const fetcher = async () =>
+      new Response("<html>Bad gateway</html>", {
+        status: 502,
+      });
+
+    await expect(
+      handleAiReviewRequest(
+        {
+          input: {
+            title: "feat: demo",
+            description: "demo",
+            diff: "diff --git a/a b/a",
+          },
+          llmConfig: {
+            apiKey: "sk-test",
+            baseUrl: "https://api.example.com/v1",
+            model: "third-party-model",
+            protocol: "chat_completions",
+          },
+          ruleReport: { findings: [] },
+        },
+        fetcher,
+      ),
+    ).resolves.toMatchObject({
+      status: 502,
+      body: {
+        error: "大模型 API 请求失败：<html>Bad gateway</html>",
+      },
+    });
+  });
 });

@@ -97,7 +97,9 @@ npm run dev
 http://127.0.0.1:5173
 ```
 
-如需启用 AI 代码评审，先启动后端 API：
+开发模式下 `npm run dev` 已经内置 `/api/ai-review`，页面里的 AI 代码评审可以直接使用。
+
+如果需要把 AI Review API 作为独立服务运行，可以另开终端启动：
 
 ```bash
 npm run dev:api
@@ -109,7 +111,7 @@ npm run dev:api
 http://127.0.0.1:8787/api/ai-review
 ```
 
-然后在页面“大模型配置”里填写：
+在页面“大模型配置”里填写：
 
 - `协议`：选择 `Chat Completions` 或 `OpenAI Responses`。
 - `BASE_URL`：第三方大模型 OpenAI-compatible 地址，例如 `https://api.openai.com/v1`、`https://api.deepseek.com/v1`。
@@ -128,7 +130,7 @@ $env:OPENAI_BASE_URL="https://api.openai.com/v1"
 $env:OPENAI_API_KEY="你的 API Key"
 $env:OPENAI_MODEL="gpt-4o-mini"
 $env:OPENAI_PROTOCOL="responses"
-npm run dev:api
+npm run dev
 ```
 
 ## 使用方式
