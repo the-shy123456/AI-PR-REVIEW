@@ -80,7 +80,7 @@ AI 代码评审负责规则难以覆盖的主观质量判断：
 - ESLint 9.19.0：代码规范检查。
 - lucide-react 0.475.0：按钮与模块图标。
 - Chrome/Edge Manifest V3：浏览器插件版本。
-- OpenAI Responses API：AI 代码质量评审。
+- OpenAI-compatible Chat Completions / OpenAI Responses API：AI 代码质量评审。
 
 完整依赖版本以 `package.json` 和 `package-lock.json` 为准。
 
@@ -111,9 +111,15 @@ http://127.0.0.1:8787/api/ai-review
 
 然后在页面“大模型配置”里填写：
 
+- `协议`：选择 `Chat Completions` 或 `OpenAI Responses`。
 - `BASE_URL`：第三方大模型 OpenAI-compatible 地址，例如 `https://api.openai.com/v1`、`https://api.deepseek.com/v1`。
 - `API_KEY`：对应平台的 API Key。
 - `MODEL`：模型名，例如 `gpt-4o-mini`、`deepseek-chat`、`qwen-plus`。
+
+协议说明：
+
+- `Chat Completions`：调用 `{BASE_URL}/chat/completions`，适合 DeepSeek、通义千问等 OpenAI-compatible 第三方服务。
+- `OpenAI Responses`：调用 `{BASE_URL}/responses`，适合支持 OpenAI Responses API 和 JSON Schema 结构化输出的模型服务。
 
 也可以用后端环境变量作为默认值：
 
@@ -121,6 +127,7 @@ http://127.0.0.1:8787/api/ai-review
 $env:OPENAI_BASE_URL="https://api.openai.com/v1"
 $env:OPENAI_API_KEY="你的 API Key"
 $env:OPENAI_MODEL="gpt-4o-mini"
+$env:OPENAI_PROTOCOL="responses"
 npm run dev:api
 ```
 
@@ -135,7 +142,7 @@ https://github.com/owner/repo/pull/123
 
 3. 点击“分析 PR”。
 4. 查看风险评分、审查意见、PR 描述、测试建议和交付检查。
-5. 在“大模型配置”中填写 `BASE_URL`、`API_KEY`、`MODEL` 后，点击“AI 代码评审”获取代码质量评价和合并建议。
+5. 在“大模型配置”中选择协议并填写 `BASE_URL`、`API_KEY`、`MODEL` 后，点击“AI 代码评审”获取代码质量评价和合并建议。
 6. 复制或导出 Markdown 报告。
 
 ## 浏览器插件

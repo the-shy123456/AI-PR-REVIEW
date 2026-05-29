@@ -26,10 +26,13 @@ export interface AiCodeReview {
   summary: string;
 }
 
+export type LlmProtocol = "chat_completions" | "responses";
+
 export interface LlmConfig {
   apiKey: string;
   baseUrl: string;
   model: string;
+  protocol: LlmProtocol;
 }
 
 export class AiReviewError extends Error {

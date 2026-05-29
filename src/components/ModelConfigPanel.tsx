@@ -1,5 +1,5 @@
 import { KeyRound, ServerCog } from "lucide-react";
-import type { LlmConfig } from "../lib/aiCodeReview";
+import type { LlmConfig, LlmProtocol } from "../lib/aiCodeReview";
 
 interface ModelConfigPanelProps {
   config: LlmConfig;
@@ -7,7 +7,10 @@ interface ModelConfigPanelProps {
 }
 
 export function ModelConfigPanel({ config, onChange }: ModelConfigPanelProps) {
-  function updateConfig(key: keyof LlmConfig, value: string) {
+  function updateConfig<Key extends keyof LlmConfig>(
+    key: Key,
+    value: LlmConfig[Key],
+  ) {
     onChange({
       ...config,
       [key]: value,
@@ -24,7 +27,26 @@ export function ModelConfigPanel({ config, onChange }: ModelConfigPanelProps) {
         <ServerCog size={28} />
         <div>
           <strong>配置第三方大模型后启用 AI 代码评审</strong>
-          <p>配置仅保存在当前浏览器会话中，前端会通过后端代理调用模型，避免在代码仓库中暴露密钥。</p>
+          <p>
+            支持 OpenAI-compatible Chat Completions，也支持 OpenAI Responses
+            协议。配置仅保存在当前浏览器会话中。
+          </p>
+        </div>
+      </section>
+      <section className="protocol-section" aria-label="模型协议">
+        <span>协议</span>
+        <div className="protocol-toggle" role="group" aria-label="选择模型协议">
+          {protocolOptions.map((option) => (
+            <button
+              aria-pressed={config.protocol === option.value}
+              className={config.protocol === option.value ? "active" : ""}
+              key={option.value}
+              onClick={() => updateConfig("protocol", option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </section>
       <label>
@@ -58,3 +80,8 @@ export function ModelConfigPanel({ config, onChange }: ModelConfigPanelProps) {
     </aside>
   );
 }
+
+const protocolOptions: Array<{ label: string; value: LlmProtocol }> = [
+  { label: "Chat Completions", value: "chat_completions" },
+  { label: "OpenAI Responses", value: "responses" },
+];

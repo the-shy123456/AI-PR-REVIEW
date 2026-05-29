@@ -1,4 +1,76 @@
 const MAX_DIFF_CHARS = 90000;
+const DEFAULT_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_PROTOCOL = "chat_completions";
+const SYSTEM_PROMPT =
+  "你是资深代码审查工程师。请基于 PR diff 做严格但务实的代码评审，关注漏洞、边界条件、可维护性、完整性、测试缺口和合并风险。只输出 JSON，不要输出 Markdown。";
+const JSON_OUTPUT_INSTRUCTION =
+  "请只返回一个 JSON 对象，字段必须为：summary, codeQualityScore, dimensions, findings, positiveNotes, mergeRecommendation, mergeRecommendationText。mergeRecommendation 只能是 approve、comment 或 request_changes。";
+
+const responseSchema = {
+  additionalProperties: false,
+  properties: {
+    codeQualityScore: {
+      maximum: 100,
+      minimum: 0,
+      type: "integer",
+    },
+    dimensions: {
+      items: {
+        additionalProperties: false,
+        properties: {
+          assessment: { type: "string" },
+          name: { type: "string" },
+          score: {
+            maximum: 100,
+            minimum: 0,
+            type: "integer",
+          },
+        },
+        required: ["assessment", "name", "score"],
+        type: "object",
+      },
+      type: "array",
+    },
+    findings: {
+      items: {
+        additionalProperties: false,
+        properties: {
+          file: { type: ["string", "null"] },
+          line: { type: ["integer", "null"] },
+          recommendation: { type: "string" },
+          severity: {
+            enum: ["critical", "high", "medium", "low"],
+            type: "string",
+          },
+          title: { type: "string" },
+        },
+        required: ["file", "line", "recommendation", "severity", "title"],
+        type: "object",
+      },
+      type: "array",
+    },
+    mergeRecommendation: {
+      enum: ["approve", "comment", "request_changes"],
+      type: "string",
+    },
+    mergeRecommendationText: { type: "string" },
+    positiveNotes: {
+      items: { type: "string" },
+      type: "array",
+    },
+    summary: { type: "string" },
+  },
+  required: [
+    "summary",
+    "codeQualityScore",
+    "dimensions",
+    "findings",
+    "positiveNotes",
+    "mergeRecommendation",
+    "mergeRecommendationText",
+  ],
+  type: "object",
+};
 
 export async function handleAiReviewRequest(payload, fetcher = fetch) {
   const input = payload?.input;
@@ -31,23 +103,8 @@ export async function handleAiReviewRequest(payload, fetcher = fetch) {
   }
 
   const prompt = buildPrompt(input, ruleReport);
-  const response = await fetcher(buildChatCompletionsUrl(llmConfig.baseUrl), {
-    body: JSON.stringify({
-      messages: [
-        {
-          role: "system",
-          content:
-            "你是资深代码审查工程师。请基于 PR diff 做严格但务实的代码评审，关注漏洞、边界条件、可维护性、完整性、测试缺口和合并风险。只输出 JSON，不要输出 Markdown。",
-        },
-        {
-          role: "user",
-          content: `${prompt}\n\n请只返回一个 JSON 对象，字段必须为：summary, codeQualityScore, dimensions, findings, positiveNotes, mergeRecommendation, mergeRecommendationText。mergeRecommendation 只能是 approve、comment 或 request_changes。`,
-        },
-      ],
-      model: llmConfig.model,
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-    }),
+  const response = await fetcher(buildModelEndpoint(llmConfig), {
+    body: JSON.stringify(buildModelRequestBody(llmConfig, prompt)),
     headers: {
       Authorization: `Bearer ${llmConfig.apiKey}`,
       "Content-Type": "application/json",
@@ -68,7 +125,9 @@ export async function handleAiReviewRequest(payload, fetcher = fetch) {
   try {
     return {
       status: 200,
-      body: normalizeAiReview(JSON.parse(extractChatCompletionText(data))),
+      body: normalizeAiReview(
+        parseAiReviewJson(extractModelText(data, llmConfig.protocol)),
+      ),
     };
   } catch {
     return {
@@ -79,12 +138,27 @@ export async function handleAiReviewRequest(payload, fetcher = fetch) {
 }
 
 export function buildChatCompletionsUrl(baseUrl) {
-  const normalized = String(baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
-  if (normalized.endsWith("/chat/completions")) {
+  return buildModelEndpoint({ baseUrl, protocol: "chat_completions" });
+}
+
+export function buildModelEndpoint(config) {
+  const protocol = normalizeProtocol(config?.protocol);
+  const path = protocol === "responses" ? "/responses" : "/chat/completions";
+  const normalized = String(config?.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
+
+  if (normalized.endsWith(path)) {
     return normalized;
   }
 
-  return `${normalized}/chat/completions`;
+  if (normalized.endsWith("/chat/completions")) {
+    return `${normalized.slice(0, -"/chat/completions".length)}${path}`;
+  }
+
+  if (normalized.endsWith("/responses")) {
+    return `${normalized.slice(0, -"/responses".length)}${path}`;
+  }
+
+  return `${normalized}${path}`;
 }
 
 function resolveLlmConfig(config) {
@@ -93,9 +167,16 @@ function resolveLlmConfig(config) {
     baseUrl:
       clean(config?.baseUrl) ||
       clean(process.env.OPENAI_BASE_URL) ||
-      "https://api.openai.com/v1",
+      DEFAULT_BASE_URL,
     model: clean(config?.model) || clean(process.env.OPENAI_MODEL),
+    protocol: normalizeProtocol(
+      clean(config?.protocol) || clean(process.env.OPENAI_PROTOCOL),
+    ),
   };
+}
+
+function normalizeProtocol(value) {
+  return value === "responses" ? "responses" : DEFAULT_PROTOCOL;
 }
 
 function clean(value) {
@@ -134,6 +215,59 @@ ${diff}
 \`\`\``;
 }
 
+function buildModelRequestBody(llmConfig, prompt) {
+  const userContent = `${prompt}\n\n${JSON_OUTPUT_INSTRUCTION}`;
+
+  if (llmConfig.protocol === "responses") {
+    return {
+      input: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: userContent,
+        },
+      ],
+      model: llmConfig.model,
+      text: {
+        format: {
+          name: "ai_code_review",
+          schema: responseSchema,
+          strict: true,
+          type: "json_schema",
+        },
+      },
+      temperature: 0.2,
+    };
+  }
+
+  return {
+    messages: [
+      {
+        role: "system",
+        content: SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: userContent,
+      },
+    ],
+    model: llmConfig.model,
+    response_format: { type: "json_object" },
+    temperature: 0.2,
+  };
+}
+
+function extractModelText(data, protocol) {
+  if (protocol === "responses") {
+    return extractResponsesText(data);
+  }
+
+  return extractChatCompletionText(data);
+}
+
 function extractChatCompletionText(data) {
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content === "string") {
@@ -148,6 +282,31 @@ function extractChatCompletionText(data) {
   }
 
   return "";
+}
+
+function extractResponsesText(data) {
+  if (typeof data?.output_text === "string") {
+    return data.output_text;
+  }
+
+  if (!Array.isArray(data?.output)) {
+    return "";
+  }
+
+  return data.output
+    .flatMap((item) => (Array.isArray(item?.content) ? item.content : []))
+    .map((part) => part?.text || part?.output_text || part?.content || "")
+    .filter(Boolean)
+    .join("\n");
+}
+
+function parseAiReviewJson(text) {
+  const trimmed = String(text || "").trim();
+  const withoutFence = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+
+  return JSON.parse(withoutFence);
 }
 
 function normalizeAiReview(value) {

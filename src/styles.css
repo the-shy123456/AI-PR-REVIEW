@@ -298,6 +298,40 @@ label {
   color: #607176;
 }
 
+.protocol-section {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.protocol-section > span {
+  color: #34464c;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.protocol-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.protocol-toggle button {
+  min-height: 40px;
+  border: 1px solid #cbd7d8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #40545a;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.protocol-toggle button.active {
+  border-color: #72aaa4;
+  background: #dbf0ec;
+  color: #124c47;
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }

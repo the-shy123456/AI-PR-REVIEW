@@ -23,6 +23,7 @@ const defaultLlmConfig: LlmConfig = {
   apiKey: "",
   baseUrl: "https://api.openai.com/v1",
   model: "",
+  protocol: "chat_completions",
 };
 
 export function App() {
