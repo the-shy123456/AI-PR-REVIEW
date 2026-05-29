@@ -14,6 +14,14 @@
 3. 展示自动生成的 PR 描述、测试建议和交付检查。
 4. 简述后续真实 PR 流程与 README 中的依赖说明。
 
+## 界面预览
+
+![Desktop workbench](docs/assets/workbench-desktop.png)
+
+移动端布局：
+
+![Mobile workbench](docs/assets/workbench-mobile.png)
+
 ## 核心功能
 
 - PR 风险评分：根据内置规则和变更规模生成 0-100 风险分。
