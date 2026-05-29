@@ -7,6 +7,8 @@ export type ReviewCategory =
   | "maintainability"
   | "process";
 
+export type ReviewMode = "balanced" | "security" | "competition";
+
 export interface ReviewFinding {
   id: string;
   severity: Severity;
@@ -27,6 +29,7 @@ export interface ReviewInput {
   title: string;
   description: string;
   diff: string;
+  mode?: ReviewMode;
 }
 
 export interface ReviewReport {
@@ -34,13 +37,22 @@ export interface ReviewReport {
   riskScore: number;
   riskLevel: "低" | "中" | "高" | "严重";
   changedFiles: ChangedFile[];
+  categorySummary: CategorySummary[];
   findings: ReviewFinding[];
+  mode: ReviewMode;
   prDescription: string;
   testPlan: string[];
   deliveryChecklist: string[];
 }
 
+export interface CategorySummary {
+  category: ReviewCategory;
+  count: number;
+  highestSeverity: Severity | null;
+}
+
 type Rule = {
+  appliesTo?: ReviewMode[];
   id: string;
   severity: Severity;
   category: ReviewCategory;
@@ -63,8 +75,27 @@ const severityRank: Record<Severity, number> = {
   low: 1,
 };
 
+export const reviewModes: Record<
+  ReviewMode,
+  { description: string; label: string }
+> = {
+  balanced: {
+    label: "均衡审查",
+    description: "覆盖安全、测试、可靠性和可维护性，适合日常 PR 自检。",
+  },
+  security: {
+    label: "安全优先",
+    description: "突出 token、HTML 注入等安全风险，适合涉及权限或外部输入的变更。",
+  },
+  competition: {
+    label: "参赛规范",
+    description: "强化 PR 描述、依赖说明、拆 PR 和交付清单，贴合比赛评审要求。",
+  },
+};
+
 const rules: Rule[] = [
   {
+    appliesTo: ["balanced", "competition"],
     id: "process-empty-diff",
     severity: "high",
     category: "process",
@@ -75,6 +106,7 @@ const rules: Rule[] = [
       "粘贴完整 git diff 或 PR patch，确保评审建议能基于真实变更生成。",
   },
   {
+    appliesTo: ["balanced", "competition"],
     id: "process-title-format",
     severity: "low",
     category: "process",
@@ -116,6 +148,7 @@ const rules: Rule[] = [
       "避免直接注入 HTML；如确有需要，应使用可信白名单净化库，并补充 XSS 回归测试。",
   },
   {
+    appliesTo: ["balanced", "competition"],
     id: "testing-deleted-tests",
     severity: "high",
     category: "testing",
@@ -132,6 +165,7 @@ const rules: Rule[] = [
       "补充等价或更高覆盖度的测试，PR 描述中说明删除原因和替代验证方式。",
   },
   {
+    appliesTo: ["balanced"],
     id: "reliability-missing-finally",
     severity: "medium",
     category: "reliability",
@@ -148,6 +182,7 @@ const rules: Rule[] = [
       "用 try/catch/finally 或状态机管理异步流程，确保成功和失败路径都会结束 loading 状态。",
   },
   {
+    appliesTo: ["balanced"],
     id: "reliability-console-error",
     severity: "low",
     category: "maintainability",
@@ -160,6 +195,7 @@ const rules: Rule[] = [
       "改用统一日志或用户可感知的错误提示，并避免在生产环境输出敏感上下文。",
   },
   {
+    appliesTo: ["balanced", "competition"],
     id: "process-empty-description",
     severity: "high",
     category: "process",
@@ -172,6 +208,7 @@ const rules: Rule[] = [
       "按功能描述、实现思路、测试方式补齐 PR 描述，确保与代码变更一致。",
   },
   {
+    appliesTo: ["balanced", "competition"],
     id: "testing-no-test-change",
     severity: "medium",
     category: "testing",
@@ -194,6 +231,7 @@ const rules: Rule[] = [
       "至少补充单元测试或组件测试；若暂不适合自动化测试，在 PR 描述中写明手动验证步骤。",
   },
   {
+    appliesTo: ["balanced", "competition"],
     id: "process-large-pr",
     severity: "medium",
     category: "process",
@@ -213,8 +251,10 @@ const rules: Rule[] = [
 ];
 
 export function analyzePullRequest(input: ReviewInput): ReviewReport {
+  const mode = input.mode ?? "balanced";
   const changedFiles = parseChangedFiles(input.diff);
   const findings = rules
+    .filter((rule) => !rule.appliesTo || rule.appliesTo.includes(mode))
     .flatMap((rule) => {
       const evidence = rule.test(input, changedFiles);
       if (!evidence) {
@@ -238,11 +278,13 @@ export function analyzePullRequest(input: ReviewInput): ReviewReport {
   const riskLevel = toRiskLevel(riskScore);
 
   return {
-    summary: buildSummary(input, changedFiles, findings),
+    summary: buildSummary(input, changedFiles, findings, mode),
     riskScore,
     riskLevel,
     changedFiles,
+    categorySummary: buildCategorySummary(findings),
     findings,
+    mode,
     prDescription: buildPrDescription(input, findings),
     testPlan: buildTestPlan(changedFiles, findings),
     deliveryChecklist: buildDeliveryChecklist(findings),
@@ -318,17 +360,44 @@ function buildSummary(
   input: ReviewInput,
   files: ChangedFile[],
   findings: ReviewFinding[],
+  mode: ReviewMode,
 ): string {
   const title = input.title.trim() || "未命名 PR";
   const highRiskCount = findings.filter((finding) =>
     ["critical", "high"].includes(finding.severity),
   ).length;
+  const modeLabel = reviewModes[mode].label;
 
   if (findings.length === 0) {
-    return `${title} 涉及 ${files.length} 个文件，未命中内置风险规则，可进入常规人工复核。`;
+    return `${modeLabel}模式下，${title} 涉及 ${files.length} 个文件，未命中内置风险规则，可进入常规人工复核。`;
   }
 
-  return `${title} 涉及 ${files.length} 个文件，发现 ${findings.length} 个审查点，其中 ${highRiskCount} 个需要优先处理。`;
+  return `${modeLabel}模式下，${title} 涉及 ${files.length} 个文件，发现 ${findings.length} 个审查点，其中 ${highRiskCount} 个需要优先处理。`;
+}
+
+function buildCategorySummary(findings: ReviewFinding[]): CategorySummary[] {
+  const categories: ReviewCategory[] = [
+    "security",
+    "testing",
+    "reliability",
+    "maintainability",
+    "process",
+  ];
+
+  return categories.map((category) => {
+    const categoryFindings = findings.filter(
+      (finding) => finding.category === category,
+    );
+    const highestSeverity = categoryFindings
+      .map((finding) => finding.severity)
+      .sort((left, right) => severityRank[right] - severityRank[left])[0];
+
+    return {
+      category,
+      count: categoryFindings.length,
+      highestSeverity: highestSeverity ?? null,
+    };
+  });
 }
 
 function buildPrDescription(input: ReviewInput, findings: ReviewFinding[]): string {

@@ -107,4 +107,27 @@ ${largeDiff}`,
       "process-large-pr",
     );
   });
+
+  it("supports strategy-specific rule filtering", () => {
+    const report = analyzePullRequest({
+      title: "feat: import repository",
+      description: "新增仓库导入功能",
+      mode: "security",
+      diff: `diff --git a/src/import.ts b/src/import.ts
+--- a/src/import.ts
++++ b/src/import.ts
+@@ -1 +1,5 @@
++const token = localStorage.getItem("access_token");
++console.error(token);`,
+    });
+
+    expect(report.mode).toBe("security");
+    expect(report.findings.map((finding) => finding.category)).toEqual([
+      "security",
+    ]);
+    expect(report.categorySummary.find((item) => item.category === "security")).toMatchObject({
+      count: 1,
+      highestSeverity: "critical",
+    });
+  });
 });

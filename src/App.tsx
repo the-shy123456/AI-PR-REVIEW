@@ -6,19 +6,20 @@ import { PullRequestEditor } from "./components/PullRequestEditor";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { samplePullRequest } from "./data/samplePullRequest";
 import { createMarkdownReport } from "./lib/markdownReport";
-import { analyzePullRequest } from "./lib/reviewEngine";
+import { analyzePullRequest, type ReviewMode } from "./lib/reviewEngine";
 
 export function App() {
   const [title, setTitle] = useState(samplePullRequest.title);
   const [description, setDescription] = useState(samplePullRequest.description);
   const [diff, setDiff] = useState(samplePullRequest.diff);
+  const [mode, setMode] = useState<ReviewMode>("balanced");
   const [activeTab, setActiveTab] = useState<"findings" | "description" | "tests">(
     "findings",
   );
 
   const report = useMemo(
-    () => analyzePullRequest({ title, description, diff }),
-    [title, description, diff],
+    () => analyzePullRequest({ title, description, diff, mode }),
+    [title, description, diff, mode],
   );
 
   function loadSample() {
@@ -34,7 +35,7 @@ export function App() {
   }
 
   function downloadReport() {
-    const markdown = createMarkdownReport({ title, description, diff }, report);
+    const markdown = createMarkdownReport({ title, description, diff, mode }, report);
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -58,7 +59,9 @@ export function App() {
           diff={diff}
           onDescriptionChange={setDescription}
           onDiffChange={setDiff}
+          onModeChange={setMode}
           onTitleChange={setTitle}
+          mode={mode}
           title={title}
         />
         <ReviewPanel

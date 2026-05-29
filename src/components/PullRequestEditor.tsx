@@ -1,9 +1,13 @@
+import { reviewModes, type ReviewMode } from "../lib/reviewEngine";
+
 interface PullRequestEditorProps {
   description: string;
   diff: string;
   onDescriptionChange: (value: string) => void;
   onDiffChange: (value: string) => void;
+  onModeChange: (value: ReviewMode) => void;
   onTitleChange: (value: string) => void;
+  mode: ReviewMode;
   title: string;
 }
 
@@ -12,7 +16,9 @@ export function PullRequestEditor({
   diff,
   onDescriptionChange,
   onDiffChange,
+  onModeChange,
   onTitleChange,
+  mode,
   title,
 }: PullRequestEditorProps) {
   return (
@@ -21,6 +27,25 @@ export function PullRequestEditor({
         <h2>PR 输入</h2>
         <span>本地离线分析</span>
       </div>
+      <section className="mode-section" aria-label="审查策略">
+        <div className="mode-header">
+          <strong>审查策略</strong>
+          <span>{reviewModes[mode].description}</span>
+        </div>
+        <div className="mode-toggle" role="group" aria-label="选择审查策略">
+          {Object.entries(reviewModes).map(([key, config]) => (
+            <button
+              aria-pressed={mode === key}
+              className={mode === key ? "active" : ""}
+              key={key}
+              onClick={() => onModeChange(key as ReviewMode)}
+              type="button"
+            >
+              {config.label}
+            </button>
+          ))}
+        </div>
+      </section>
       <label>
         PR 标题
         <input

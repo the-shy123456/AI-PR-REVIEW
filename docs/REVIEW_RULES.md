@@ -23,6 +23,12 @@ MVP 使用可解释的规则引擎生成 Review 建议。每条规则包含：
 | `testing-no-test-change` | medium | testing | 提醒功能变更补充测试。 |
 | `process-large-pr` | medium | process | 提醒大 PR 拆分。 |
 
+## 审查策略
+
+- 均衡审查：启用大多数规则，适合日常开发 PR。
+- 安全优先：只启用安全规则，适合涉及权限、外部输入、HTML 渲染或 token 的变更。
+- 参赛规范：强化 PR 描述、测试、拆 PR 和交付过程规则，贴合比赛要求。
+
 ## 扩展方式
 
 在 `src/lib/reviewEngine.ts` 的 `rules` 数组中追加规则，并在 `src/lib/reviewEngine.test.ts` 中补充命中和非命中用例。

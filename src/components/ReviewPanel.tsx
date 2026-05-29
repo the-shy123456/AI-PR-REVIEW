@@ -5,7 +5,11 @@ import {
   ListChecks,
   Sparkles,
 } from "lucide-react";
-import type { ReviewFinding, ReviewReport } from "../lib/reviewEngine";
+import type {
+  CategorySummary,
+  ReviewFinding,
+  ReviewReport,
+} from "../lib/reviewEngine";
 
 const severityLabels = {
   critical: "严重",
@@ -63,6 +67,7 @@ export function ReviewPanel({
 
       {activeTab === "findings" && (
         <div className="findings-list">
+          <CategorySummaryBar items={report.categorySummary} />
           {report.findings.length === 0 ? (
             <EmptyState />
           ) : (
@@ -83,6 +88,22 @@ export function ReviewPanel({
           <Checklist title="交付检查" items={report.deliveryChecklist} />
         </div>
       )}
+    </section>
+  );
+}
+
+function CategorySummaryBar({ items }: { items: CategorySummary[] }) {
+  return (
+    <section className="category-summary" aria-label="review category summary">
+      {items.map((item) => (
+        <article key={item.category}>
+          <span>{categoryLabels[item.category]}</span>
+          <strong>{item.count}</strong>
+          <small>
+            {item.highestSeverity ? severityLabels[item.highestSeverity] : "无"}
+          </small>
+        </article>
+      ))}
     </section>
   );
 }
