@@ -456,8 +456,8 @@ textarea:focus {
 }
 
 .generated-copy {
-  min-height: 430px;
-  margin: 16px;
+  min-height: 370px;
+  margin: 0 16px 16px;
   overflow: auto;
   white-space: pre-wrap;
   border: 1px solid #d8e2e3;
@@ -469,6 +469,39 @@ textarea:focus {
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.86rem;
   line-height: 1.7;
+}
+
+.generated-section {
+  display: grid;
+  gap: 12px;
+}
+
+.section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 0;
+}
+
+.section-toolbar span {
+  color: #607176;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.section-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  border: 1px solid #9fc9c5;
+  border-radius: 8px;
+  background: #dbf0ec;
+  padding: 0 12px;
+  color: #124c47;
+  font-size: 0.84rem;
+  font-weight: 800;
 }
 
 .checklist-grid {
@@ -621,6 +654,15 @@ textarea:focus {
 
   .mode-toggle {
     grid-template-columns: 1fr;
+  }
+
+  .section-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .section-toolbar button {
+    justify-content: center;
   }
 
   h1 {

@@ -1,10 +1,13 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  Clipboard,
   GitPullRequest,
   ListChecks,
   Sparkles,
 } from "lucide-react";
+import { useState } from "react";
+import { copyTextToClipboard } from "../lib/clipboard";
 import type {
   CategorySummary,
   ReviewFinding,
@@ -28,15 +31,30 @@ const categoryLabels = {
 
 interface ReviewPanelProps {
   activeTab: "findings" | "description" | "tests";
+  fullReport: string;
   onTabChange: (tab: ReviewPanelProps["activeTab"]) => void;
   report: ReviewReport;
 }
 
 export function ReviewPanel({
   activeTab,
+  fullReport,
   onTabChange,
   report,
 }: ReviewPanelProps) {
+  const [copyStatus, setCopyStatus] = useState("");
+
+  async function copyGeneratedText(label: string, value: string) {
+    try {
+      const copied = await copyTextToClipboard(value);
+      setCopyStatus(copied ? `${label}已复制` : `${label}复制失败`);
+    } catch {
+      setCopyStatus(`${label}复制失败`);
+    }
+
+    window.setTimeout(() => setCopyStatus(""), 1800);
+  }
+
   return (
     <section className="review-panel" aria-label="review report">
       <div className="summary-band">
@@ -79,14 +97,36 @@ export function ReviewPanel({
       )}
 
       {activeTab === "description" && (
-        <pre className="generated-copy">{report.prDescription}</pre>
+        <section className="generated-section">
+          <div className="section-toolbar">
+            <span>{copyStatus || "可直接粘贴到 PR 描述"}</span>
+            <button
+              onClick={() => copyGeneratedText("PR 描述", report.prDescription)}
+              type="button"
+            >
+              <Clipboard size={16} /> 复制
+            </button>
+          </div>
+          <pre className="generated-copy">{report.prDescription}</pre>
+        </section>
       )}
 
       {activeTab === "tests" && (
-        <div className="checklist-grid">
-          <Checklist title="测试建议" items={report.testPlan} />
-          <Checklist title="交付检查" items={report.deliveryChecklist} />
-        </div>
+        <section className="generated-section">
+          <div className="section-toolbar">
+            <span>{copyStatus || "复制完整报告作为 Review 评论草稿"}</span>
+            <button
+              onClick={() => copyGeneratedText("完整报告", fullReport)}
+              type="button"
+            >
+              <Clipboard size={16} /> 复制
+            </button>
+          </div>
+          <div className="checklist-grid">
+            <Checklist title="测试建议" items={report.testPlan} />
+            <Checklist title="交付检查" items={report.deliveryChecklist} />
+          </div>
+        </section>
       )}
     </section>
   );

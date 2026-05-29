@@ -66,6 +66,7 @@ export function App() {
         />
         <ReviewPanel
           activeTab={activeTab}
+          fullReport={createMarkdownReport({ title, description, diff, mode }, report)}
           onTabChange={setActiveTab}
           report={report}
         />
