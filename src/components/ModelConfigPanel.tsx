@@ -1,12 +1,21 @@
-import { KeyRound, ServerCog } from "lucide-react";
+import { CheckCircle2, KeyRound, Save, ServerCog } from "lucide-react";
 import type { LlmConfig, LlmProtocol } from "../lib/aiCodeReview";
 
 interface ModelConfigPanelProps {
   config: LlmConfig;
+  isDirty: boolean;
   onChange: (config: LlmConfig) => void;
+  onSave: () => void;
+  saved: boolean;
 }
 
-export function ModelConfigPanel({ config, onChange }: ModelConfigPanelProps) {
+export function ModelConfigPanel({
+  config,
+  isDirty,
+  onChange,
+  onSave,
+  saved,
+}: ModelConfigPanelProps) {
   function updateConfig<Key extends keyof LlmConfig>(
     key: Key,
     value: LlmConfig[Key],
@@ -29,7 +38,7 @@ export function ModelConfigPanel({ config, onChange }: ModelConfigPanelProps) {
           <strong>配置第三方大模型后启用 AI 代码评审</strong>
           <p>
             支持 OpenAI-compatible Chat Completions，也支持 OpenAI Responses
-            协议。配置仅保存在当前浏览器会话中。
+            协议。保存后会保留在当前浏览器里。
           </p>
         </div>
       </section>
@@ -77,6 +86,23 @@ export function ModelConfigPanel({ config, onChange }: ModelConfigPanelProps) {
           placeholder="gpt-4o-mini / qwen-plus / deepseek-chat"
         />
       </label>
+      <div className="model-config-actions">
+        <span>
+          {saved
+            ? "配置已保存"
+            : isDirty
+              ? "有未保存修改"
+              : "配置已是最新"}
+        </span>
+        <button
+          disabled={!isDirty}
+          onClick={onSave}
+          type="button"
+        >
+          {saved ? <CheckCircle2 size={16} /> : <Save size={16} />}
+          保存配置
+        </button>
+      </div>
     </aside>
   );
 }

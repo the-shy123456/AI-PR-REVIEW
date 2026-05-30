@@ -332,6 +332,44 @@ label {
   color: #124c47;
 }
 
+.model-config-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.model-config-actions span {
+  color: #607176;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.model-config-actions button,
+.ai-error button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid #9fc9c5;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 12px;
+  color: #124c47;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.model-config-actions button:disabled,
+.ai-error button:disabled {
+  cursor: not-allowed;
+  border-color: #d8e2e3;
+  background: #edf3f4;
+  color: #7b898d;
+}
+
 .github-auth-panel {
   display: flex;
   align-items: center;
@@ -383,6 +421,23 @@ label {
   padding: 12px;
   color: #9b2e23;
   line-height: 1.55;
+}
+
+.ai-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-error span {
+  flex: 1 1 auto;
+}
+
+.ai-error button {
+  flex: 0 0 auto;
+  border-color: #e0aaa2;
+  color: #8d2b21;
 }
 
 .imported-pr {

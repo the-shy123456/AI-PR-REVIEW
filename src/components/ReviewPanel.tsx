@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   Bot,
   CheckCircle2,
+  RotateCcw,
   Sparkles,
 } from "lucide-react";
 import type { AiCodeReview, MergeRecommendation } from "../lib/aiCodeReview";
@@ -111,7 +112,14 @@ function AiReviewSection({
           <Bot size={16} /> {loading ? "评审中" : review ? "重新评审" : "开始 AI 评审"}
         </button>
       </div>
-      {error && <p className="error-note">{error}</p>}
+      {error && (
+        <section className="error-note ai-error">
+          <span>{error}</span>
+          <button disabled={loading} onClick={onAiReview} type="button">
+            <RotateCcw size={16} /> 重试
+          </button>
+        </section>
+      )}
       {!review && !error && (
         <section className="ai-empty">
           <h3>等待 AI 代码评审</h3>

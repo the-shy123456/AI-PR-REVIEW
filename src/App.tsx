@@ -34,7 +34,12 @@ export function App() {
     () => loadSessionValue(githubAuthorizedStorageKey) === "true",
   );
   const [prUrl, setPrUrl] = useState("");
-  const [llmConfig, setLlmConfig] = useState<LlmConfig>(() => loadLlmConfig());
+  const [savedLlmConfig, setSavedLlmConfig] = useState<LlmConfig>(() =>
+    loadLlmConfig(),
+  );
+  const [draftLlmConfig, setDraftLlmConfig] =
+    useState<LlmConfig>(savedLlmConfig);
+  const [modelConfigSaved, setModelConfigSaved] = useState(false);
   const [pullRequest, setPullRequest] = useState<ReviewInput | null>(null);
   const [aiReview, setAiReview] = useState<AiCodeReview | null>(null);
   const [aiReviewError, setAiReviewError] = useState("");
@@ -46,6 +51,10 @@ export function App() {
   const report = useMemo(
     () => (pullRequest ? analyzePullRequest(pullRequest) : null),
     [pullRequest],
+  );
+  const modelConfigDirty = useMemo(
+    () => !areLlmConfigsEqual(draftLlmConfig, savedLlmConfig),
+    [draftLlmConfig, savedLlmConfig],
   );
 
   useEffect(() => {
@@ -186,7 +195,7 @@ export function App() {
     setActiveTab("ai");
 
     try {
-      setAiReview(await requestAiCodeReview(pullRequest, report, llmConfig));
+      setAiReview(await requestAiCodeReview(pullRequest, report, savedLlmConfig));
     } catch (caught) {
       setAiReviewError(
         caught instanceof Error
@@ -196,6 +205,15 @@ export function App() {
     } finally {
       setAiReviewLoading(false);
     }
+  }
+
+  function saveModelConfig() {
+    setSavedLlmConfig(draftLlmConfig);
+    saveLlmConfig(draftLlmConfig);
+    setModelConfigSaved(true);
+    window.setTimeout(() => {
+      setModelConfigSaved(false);
+    }, 1800);
   }
 
   function downloadReport() {
@@ -243,14 +261,14 @@ export function App() {
             url={prUrl}
           />
           <ModelConfigPanel
-            config={llmConfig}
+            config={draftLlmConfig}
+            isDirty={modelConfigDirty}
             onChange={(nextConfig) => {
-              setLlmConfig(nextConfig);
-              sessionStorage.setItem(
-                llmConfigStorageKey,
-                JSON.stringify(nextConfig),
-              );
+              setDraftLlmConfig(nextConfig);
+              setModelConfigSaved(false);
             }}
+            onSave={saveModelConfig}
+            saved={modelConfigSaved}
           />
         </div>
         {report && pullRequest ? (
@@ -294,7 +312,9 @@ function loadSessionValue(key: string) {
 
 function loadLlmConfig(): LlmConfig {
   try {
-    const saved = sessionStorage.getItem(llmConfigStorageKey);
+    const saved =
+      localStorage.getItem(llmConfigStorageKey) ??
+      sessionStorage.getItem(llmConfigStorageKey);
     return saved
       ? {
           ...defaultLlmConfig,
@@ -304,4 +324,29 @@ function loadLlmConfig(): LlmConfig {
   } catch {
     return defaultLlmConfig;
   }
+}
+
+function saveLlmConfig(config: LlmConfig) {
+  const serializedConfig = JSON.stringify(config);
+
+  try {
+    localStorage.setItem(llmConfigStorageKey, serializedConfig);
+  } catch {
+    // Ignore storage failures; the current in-memory draft still remains usable.
+  }
+
+  try {
+    sessionStorage.setItem(llmConfigStorageKey, serializedConfig);
+  } catch {
+    // Ignore storage failures; the current in-memory draft still remains usable.
+  }
+}
+
+function areLlmConfigsEqual(left: LlmConfig, right: LlmConfig) {
+  return (
+    left.apiKey === right.apiKey &&
+    left.baseUrl === right.baseUrl &&
+    left.model === right.model &&
+    left.protocol === right.protocol
+  );
 }
