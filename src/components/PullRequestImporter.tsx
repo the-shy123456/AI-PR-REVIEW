@@ -1,9 +1,12 @@
-import { Github, Loader2, Search } from "lucide-react";
+import { Github, LogIn, LogOut, Loader2, Search, ShieldCheck } from "lucide-react";
 
 interface PullRequestImporterProps {
   error: string;
+  githubAuthorized: boolean;
   loading: boolean;
   onAnalyze: () => void;
+  onGithubLogin: () => void;
+  onGithubLogout: () => void;
   onUrlChange: (value: string) => void;
   sourceUrl?: string;
   title?: string;
@@ -12,8 +15,11 @@ interface PullRequestImporterProps {
 
 export function PullRequestImporter({
   error,
+  githubAuthorized,
   loading,
   onAnalyze,
+  onGithubLogin,
+  onGithubLogout,
   onUrlChange,
   sourceUrl,
   title,
@@ -30,7 +36,7 @@ export function PullRequestImporter({
         <div>
           <strong>粘贴 GitHub PR 链接后自动分析</strong>
           <p>
-            系统会读取 PR 标题、描述和 diff，再生成风险评分、审查意见和 AI 代码质量评价。
+            登录 GitHub 后使用授权访问，避免匿名接口限流导致公开 PR 读取失败。
           </p>
         </div>
       </section>
@@ -47,6 +53,21 @@ export function PullRequestImporter({
           placeholder="https://github.com/owner/repo/pull/123"
         />
       </label>
+      <section className="github-auth-panel">
+        <div>
+          {githubAuthorized ? <ShieldCheck size={18} /> : <Github size={18} />}
+          <span>{githubAuthorized ? "GitHub 已授权" : "GitHub 未授权"}</span>
+        </div>
+        {githubAuthorized ? (
+          <button onClick={onGithubLogout} type="button">
+            <LogOut size={16} /> 退出
+          </button>
+        ) : (
+          <button onClick={onGithubLogin} type="button">
+            <LogIn size={16} /> 登录 GitHub
+          </button>
+        )}
+      </section>
       <button
         className="primary-action"
         disabled={loading || !url.trim()}

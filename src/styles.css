@@ -332,6 +332,45 @@ label {
   color: #124c47;
 }
 
+.github-auth-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #d8e2e3;
+  border-radius: 8px;
+  background: #f7fbfb;
+  padding: 10px;
+}
+
+.github-auth-panel div,
+.github-auth-panel button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.github-auth-panel div {
+  color: #40545a;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.github-auth-panel svg {
+  color: #246b62;
+}
+
+.github-auth-panel button {
+  min-height: 34px;
+  border: 1px solid #9fc9c5;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 10px;
+  color: #124c47;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }

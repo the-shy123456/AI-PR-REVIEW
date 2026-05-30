@@ -48,8 +48,11 @@ type Rule = {
 `src/lib/githubPullRequest.ts` 负责：
 
 - `parseGitHubPullRequestUrl(url)`：校验并解析 GitHub PR URL。
-- `fetchGitHubPullRequest(ref)`：通过 GitHub API 读取 PR metadata 和 diff media type。
+- `fetchGitHubPullRequest(ref)`：调用本地/部署 API 代理读取 PR metadata 和 diff。
 - `importGitHubPullRequest(url)`：组合解析和拉取流程，返回 `ReviewInput`。
+
+`server/githubPullRequestCore.mjs` 负责服务端 GitHub 读取逻辑。页面通过 GitHub OAuth 登录建立 `HttpOnly` 会话 Cookie，后端也支持 `GITHUB_TOKEN` 环境变量，用于避免匿名 API rate limit。
+`server/githubAuthCore.mjs` 负责 GitHub OAuth 授权跳转、state 校验、code 换 token 和退出登录。
 
 ## Frontend
 
@@ -86,7 +89,7 @@ AI 代码评审通过后端接口完成，支持页面传入第三方 OpenAI-com
 
 ## Future Extensions
 
-- GitHub Token 配置：提高公开 API rate limit。
+- GitHub Enterprise 和更细粒度仓库授权。
 - Gitee 支持：增加 Gitee PR URL 解析与 diff 拉取。
 - LLM 增强：将规则命中结果发送给模型生成上下文修复建议。
 - 团队规则：支持导入 YAML/JSON 自定义规则集。

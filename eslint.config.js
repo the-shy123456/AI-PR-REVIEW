@@ -37,7 +37,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["server/**/*.mjs", "api/**/*.js"],
+    files: ["server/**/*.mjs", "api/**/*.js", "vite.config.js"],
     languageOptions: {
       ecmaVersion: 2022,
       globals: {

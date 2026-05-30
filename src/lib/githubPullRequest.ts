@@ -7,13 +7,6 @@ export interface GitHubPullRequestRef {
   url: string;
 }
 
-interface GitHubPullRequestResponse {
-  body: string | null;
-  html_url: string;
-  number: number;
-  title: string;
-}
-
 export class PullRequestImportError extends Error {
   constructor(message: string) {
     super(message);
@@ -55,39 +48,28 @@ export async function fetchGitHubPullRequest(
   ref: GitHubPullRequestRef,
   fetcher: typeof fetch = fetch,
 ): Promise<ReviewInput> {
-  const apiUrl = `https://api.github.com/repos/${ref.owner}/${ref.repo}/pulls/${ref.pullNumber}`;
+  const response = await fetcher("/api/github-pr", {
+    body: JSON.stringify({
+      owner: ref.owner,
+      pullNumber: ref.pullNumber,
+      repo: ref.repo,
+    }),
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
 
-  const [metadataResponse, diffResponse] = await Promise.all([
-    fetcher(apiUrl, { headers: { Accept: "application/vnd.github+json" } }),
-    fetcher(apiUrl, { headers: { Accept: "application/vnd.github.v3.diff" } }),
-  ]);
-
-  if (!metadataResponse.ok) {
+  if (!response.ok) {
+    const payload = await safeJson(response);
     throw new PullRequestImportError(
-      `无法读取 PR 元数据，GitHub 返回 ${metadataResponse.status}。请确认仓库和 PR 公开可访问。`,
+      payload.error ||
+        `无法读取 PR，导入服务返回 ${response.status}。请确认仓库和 PR 公开可访问。`,
     );
   }
 
-  if (!diffResponse.ok) {
-    throw new PullRequestImportError(
-      `无法读取 PR diff，GitHub 返回 ${diffResponse.status}。请确认该 PR 公开可访问。`,
-    );
-  }
-
-  const metadata = (await metadataResponse.json()) as GitHubPullRequestResponse;
-  const diff = await diffResponse.text();
-
-  if (!diff.trim()) {
-    throw new PullRequestImportError("该 PR diff 为空，暂时无法分析。");
-  }
-
-  return {
-    description: metadata.body ?? "",
-    diff,
-    mode: "competition",
-    sourceUrl: metadata.html_url,
-    title: metadata.title || `${ref.owner}/${ref.repo}#${ref.pullNumber}`,
-  };
+  return (await response.json()) as ReviewInput;
 }
 
 export async function importGitHubPullRequest(
@@ -96,4 +78,12 @@ export async function importGitHubPullRequest(
 ): Promise<ReviewInput> {
   const ref = parseGitHubPullRequestUrl(value);
   return fetchGitHubPullRequest(ref, fetcher);
+}
+
+async function safeJson(response: Response): Promise<{ error?: string }> {
+  try {
+    return (await response.json()) as { error?: string };
+  } catch {
+    return {};
+  }
 }

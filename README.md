@@ -115,6 +115,24 @@ http://127.0.0.1:8787/api/ai-review
 - `API_KEY`：对应平台的 API Key。
 - `MODEL`：模型名，例如 `gpt-4o-mini`、`deepseek-chat`、`qwen-plus`。
 
+如果 GitHub 匿名 API 返回 403，可以在“PR 链接”区域点击“登录 GitHub”走 OAuth 授权。授权 token 由后端写入 `HttpOnly` 会话 Cookie，前端只保存“已授权”状态，用于读取 PR metadata 和 diff。
+
+本地 OAuth 需要先在 GitHub OAuth App 中配置回调地址：
+
+```text
+http://127.0.0.1:5173/api/github-auth/callback
+```
+
+然后设置：
+
+```bash
+$env:GITHUB_CLIENT_ID="你的 GitHub OAuth Client ID"
+$env:GITHUB_CLIENT_SECRET="你的 GitHub OAuth Client Secret"
+npm run dev
+```
+
+也可以在后端环境变量中配置 `GITHUB_TOKEN` 作为服务端默认授权。
+
 协议说明：
 
 - `Chat Completions`：调用 `{BASE_URL}/chat/completions`，适合 DeepSeek、通义千问等 OpenAI-compatible 第三方服务。
@@ -196,7 +214,7 @@ npm run lint
 
 ## 后续规划
 
-- 支持 GitHub Token 配置以提高 API rate limit。
+- 支持 GitHub Enterprise 和更细粒度仓库授权。
 - 支持 GitHub Enterprise 和 Gitee PR。
 - 支持团队自定义规则集。
 - 支持把 AI Review 结果自动发布为 GitHub PR 评论。
