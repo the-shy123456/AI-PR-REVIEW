@@ -3,6 +3,8 @@ const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_OAUTH_STATE_COOKIE = "ai_pr_review_github_oauth_state";
 export const GITHUB_TOKEN_COOKIE = "ai_pr_review_github_token";
 const MESSAGE_TYPE = "ai-pr-review:github-auth";
+const OAUTH_NOT_CONFIGURED_MESSAGE =
+  "GitHub 登录暂未启用：部署者需要先配置 GitHub OAuth App。";
 const OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60;
 const TOKEN_MAX_AGE_SECONDS = 8 * 60 * 60;
 
@@ -13,7 +15,7 @@ export function createGitHubAuthStartResponse({ origin, state }) {
 
   if (!clientId || !clientSecret) {
     return {
-      body: "GitHub OAuth 未配置：请设置 GITHUB_CLIENT_ID 和 GITHUB_CLIENT_SECRET。",
+      body: OAUTH_NOT_CONFIGURED_MESSAGE,
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       status: 500,
     };
@@ -50,7 +52,7 @@ export async function createGitHubAuthCallbackResponse(
   if (!clientId || !clientSecret) {
     return htmlResponse(
       renderCallbackPage({
-        error: "GitHub OAuth 未配置：请设置 GITHUB_CLIENT_ID 和 GITHUB_CLIENT_SECRET。",
+        error: OAUTH_NOT_CONFIGURED_MESSAGE,
         origin,
         state,
       }),

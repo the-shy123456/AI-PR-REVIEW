@@ -117,7 +117,9 @@ http://127.0.0.1:8787/api/ai-review
 
 如果 GitHub 匿名 API 返回 403，可以在“PR 链接”区域点击“登录 GitHub”走 OAuth 授权。授权 token 由后端写入 `HttpOnly` 会话 Cookie，前端只保存“已授权”状态，用于读取 PR metadata 和 diff。
 
-本地 OAuth 需要先在 GitHub OAuth App 中配置回调地址：
+GitHub 登录是标准 OAuth 流程：终端用户只点击“登录 GitHub”，然后跳转到 GitHub 用自己的账号授权。下面两个值是部署者在 GitHub OAuth App 后台登记本应用时获得的服务端配置，不是给终端用户填写的账号信息。
+
+本地开发需要先在 GitHub OAuth App 中配置回调地址：
 
 ```text
 http://127.0.0.1:5173/api/github-auth/callback
@@ -130,6 +132,8 @@ $env:GITHUB_CLIENT_ID="你的 GitHub OAuth Client ID"
 $env:GITHUB_CLIENT_SECRET="你的 GitHub OAuth Client Secret"
 npm run dev
 ```
+
+也可以复制 `.env.example` 为 `.env.local` 后填入同样的配置。未配置时，登录入口会提示“GitHub 登录暂未启用”；配置后点击按钮会直接跳转 GitHub 登录/授权页面。
 
 也可以在后端环境变量中配置 `GITHUB_TOKEN` 作为服务端默认授权。
 
