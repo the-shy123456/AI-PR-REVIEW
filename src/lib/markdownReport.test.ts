@@ -31,6 +31,8 @@ describe("createMarkdownReport", () => {
     expect(markdown).toContain("src/Preview.tsx");
     expect(markdown).toContain("疑似引入未净化的 HTML 注入点");
     expect(markdown).toContain("## AI 代码质量评审");
-    expect(markdown).toContain("## 测试建议");
+    expect(markdown).not.toContain("## 建议 PR 描述");
+    expect(markdown).not.toContain("## 测试建议");
+    expect(markdown).not.toContain("## 交付检查");
   });
 });

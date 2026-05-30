@@ -1,6 +1,6 @@
 # AI PR Review Assistant
 
-AI PR Review Assistant 是一个面向 GitHub Pull Request 的自动审查助手。用户粘贴公开 GitHub PR 链接后，系统会自动拉取 PR 标题、描述和 diff，生成结构化风险评分、审查意见、测试建议和可复制 Review 报告。
+AI PR Review Assistant 是一个面向 GitHub Pull Request 的自动审查助手。用户粘贴公开 GitHub PR 链接后，系统会自动拉取 PR 标题、描述和 diff，生成结构化风险评分、审查意见、AI 代码质量评价和可导出 Review 报告。
 
 项目同时提供网页端和浏览器插件版本：
 
@@ -27,10 +27,7 @@ AI PR Review Assistant 是一个面向 GitHub Pull Request 的自动审查助手
 - 结构化审查意见：覆盖安全、测试、可靠性、可维护性和流程规范。
 - AI 代码质量评审：大模型阅读 PR diff，评价代码质量、漏洞风险、测试充分性、考虑是否周到，并给出合并建议。
 - 变更文件解析：从 PR diff 中识别文件状态、增删行数量。
-- PR 描述生成：按比赛规范生成“功能描述 / 实现思路 / 测试方式 / Review 关注点”。
-- 测试与交付检查：提醒补充测试、README 依赖说明和主分支可运行要求。
 - Markdown 报告导出：可下载 Review 结果作为评审记录或 PR 评论草稿。
-- 一键复制：可复制 PR 描述或完整 Review 报告。
 - 浏览器插件：在 GitHub PR 页面内直接分析当前 PR。
 
 ## 当前规则
@@ -67,7 +64,7 @@ AI 代码评审负责规则难以覆盖的主观质量判断：
 - `src/lib/reviewEngine.ts` 中的 diff 解析、风险规则、评分模型和文案生成逻辑。
 - React PR 分析界面与信息架构。
 - Manifest V3 GitHub PR 页面分析插件。
-- 面向参赛 PR 规范的交付检查清单。
+- 面向参赛 PR 规范的过程风险识别规则。
 
 第三方库用于工程搭建、UI 图标、测试和构建，不包含核心 Review 规则模型。
 
@@ -143,9 +140,9 @@ https://github.com/owner/repo/pull/123
 ```
 
 3. 点击“分析 PR”。
-4. 查看风险评分、审查意见、PR 描述、测试建议和交付检查。
+4. 查看风险评分、审查意见、AI 代码评审和变更文件统计。
 5. 在“大模型配置”中选择协议并填写 `BASE_URL`、`API_KEY`、`MODEL` 后，点击“AI 代码评审”获取代码质量评价和合并建议。
-6. 复制或导出 Markdown 报告。
+6. 导出 Markdown Review 报告。
 
 ## 浏览器插件
 

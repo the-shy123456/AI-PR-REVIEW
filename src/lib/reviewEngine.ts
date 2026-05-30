@@ -41,9 +41,6 @@ export interface ReviewReport {
   categorySummary: CategorySummary[];
   findings: ReviewFinding[];
   mode: ReviewMode;
-  prDescription: string;
-  testPlan: string[];
-  deliveryChecklist: string[];
 }
 
 export interface CategorySummary {
@@ -90,7 +87,7 @@ export const reviewModes: Record<
   },
   competition: {
     label: "参赛规范",
-    description: "强化 PR 描述、依赖说明、拆 PR 和交付清单，贴合比赛评审要求。",
+    description: "强化 PR 描述、测试和拆 PR 规则，贴合比赛评审要求。",
   },
 };
 
@@ -286,9 +283,6 @@ export function analyzePullRequest(input: ReviewInput): ReviewReport {
     categorySummary: buildCategorySummary(findings),
     findings,
     mode,
-    prDescription: buildPrDescription(input, findings),
-    testPlan: buildTestPlan(changedFiles, findings),
-    deliveryChecklist: buildDeliveryChecklist(findings),
   };
 }
 
@@ -399,65 +393,6 @@ function buildCategorySummary(findings: ReviewFinding[]): CategorySummary[] {
       highestSeverity: highestSeverity ?? null,
     };
   });
-}
-
-function buildPrDescription(input: ReviewInput, findings: ReviewFinding[]): string {
-  const feature = input.description.trim() || "请补充本 PR 的业务目标和使用方式。";
-  const coreRisks = findings
-    .slice(0, 3)
-    .map((finding) => `- ${finding.title}：${finding.recommendation}`)
-    .join("\n");
-
-  return `## 功能描述
-${feature}
-
-## 实现思路
-- 基于本次 diff 识别变更文件、风险规则命中项和测试缺口。
-- 需要重点关注安全、可靠性、测试覆盖和 PR 过程规范。
-
-## 测试方式
-- 运行项目现有自动化测试。
-- 覆盖主要成功路径、失败路径和边界输入。
-- 针对 Review 建议完成修复后重新提交。
-
-## Review 关注点
-${coreRisks || "- 当前没有命中高优先级风险规则，建议继续进行人工业务逻辑复核。"}`;
-}
-
-function buildTestPlan(files: ChangedFile[], findings: ReviewFinding[]): string[] {
-  const plan = [
-    "运行 npm test / 项目既有测试命令，确认自动化测试通过。",
-    "按 PR 描述中的使用方式完成一次手动主流程验证。",
-  ];
-
-  if (files.some((file) => file.path.endsWith(".tsx") || file.path.endsWith(".jsx"))) {
-    plan.push("补充或更新组件交互测试，覆盖加载、成功、失败状态。");
-  }
-
-  if (findings.some((finding) => finding.category === "security")) {
-    plan.push("检查敏感信息不进入前端存储、日志、URL 或请求体。");
-  }
-
-  if (findings.some((finding) => finding.category === "testing")) {
-    plan.push("补齐被删除或缺失的测试，并在 PR 描述中列出验证命令。");
-  }
-
-  return plan;
-}
-
-function buildDeliveryChecklist(findings: ReviewFinding[]): string[] {
-  const checklist = [
-    "PR 标题用一句话说明新增或修改内容。",
-    "PR 描述包含功能描述、实现思路、测试方式。",
-    "README 列明第三方依赖和原创功能范围。",
-    "合并后主分支保持可运行，可复现 demo 效果。",
-  ];
-
-  if (findings.length > 0) {
-    checklist.unshift("处理所有 critical/high 级别问题，或在 PR 描述中说明暂缓原因。");
-  }
-
-  return checklist;
 }
 
 function isTestFile(path: string): boolean {

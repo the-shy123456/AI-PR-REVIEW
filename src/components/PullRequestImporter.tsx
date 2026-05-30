@@ -30,7 +30,7 @@ export function PullRequestImporter({
         <div>
           <strong>粘贴 GitHub PR 链接后自动分析</strong>
           <p>
-            系统会读取 PR 标题、描述和 diff，再生成风险评分、审查意见、测试建议和可复制报告。
+            系统会读取 PR 标题、描述和 diff，再生成风险评分、审查意见和 AI 代码质量评价。
           </p>
         </div>
       </section>

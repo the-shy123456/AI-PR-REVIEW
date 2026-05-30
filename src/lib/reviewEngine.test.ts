@@ -60,21 +60,27 @@ deleted file mode 100644
     );
   });
 
-  it("creates a usable PR description skeleton", () => {
+  it("summarizes findings by category", () => {
     const report = analyzePullRequest({
-      title: "docs: update readme",
-      description: "补充 README 使用说明",
-      diff: `diff --git a/README.md b/README.md
---- a/README.md
-+++ b/README.md
-@@ -1 +1,2 @@
- # Demo
-+Usage`,
+      title: "feat: add preview",
+      description: "新增 HTML 预览能力",
+      diff: `diff --git a/src/Preview.tsx b/src/Preview.tsx
+--- a/src/Preview.tsx
++++ b/src/Preview.tsx
+@@ -1 +1,3 @@
++export function Preview({ html }: { html: string }) {
++  return <div dangerouslySetInnerHTML={{ __html: html }} />;
++}`,
     });
 
-    expect(report.prDescription).toContain("## 功能描述");
-    expect(report.deliveryChecklist).toContain(
-      "PR 描述包含功能描述、实现思路、测试方式。",
+    expect(report.categorySummary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "security",
+          count: 1,
+          highestSeverity: "high",
+        }),
+      ]),
     );
   });
 

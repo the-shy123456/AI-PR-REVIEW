@@ -17,7 +17,7 @@ import {
 import { createMarkdownReport } from "./lib/markdownReport";
 import { analyzePullRequest, type ReviewInput } from "./lib/reviewEngine";
 
-type ReviewTab = "findings" | "ai" | "description" | "tests";
+type ReviewTab = "findings" | "ai";
 const llmConfigStorageKey = "ai-pr-review.llm-config";
 const defaultLlmConfig: LlmConfig = {
   apiKey: "",
@@ -151,7 +151,6 @@ export function App() {
             aiReview={aiReview}
             aiReviewError={aiReviewError}
             aiReviewLoading={aiReviewLoading}
-            fullReport={createMarkdownReport(pullRequest, report, aiReview)}
             onAiReview={analyzeCodeWithAi}
             onTabChange={setActiveTab}
             report={report}
@@ -159,7 +158,7 @@ export function App() {
         ) : (
           <section className="review-panel placeholder-panel">
             <h2>PR 分析结果</h2>
-            <p>这里会显示风险评分、审查意见、生成的 PR 描述和测试建议。</p>
+            <p>这里会显示风险评分、审查意见、AI 代码评审和合并建议。</p>
           </section>
         )}
         <ChangedFilesPanel files={report?.changedFiles ?? []} />
