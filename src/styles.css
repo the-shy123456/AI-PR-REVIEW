@@ -298,6 +298,117 @@ label {
   color: #607176;
 }
 
+.protocol-section {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.protocol-section > span {
+  color: #34464c;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.protocol-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.protocol-toggle button {
+  min-height: 40px;
+  border: 1px solid #cbd7d8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #40545a;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.protocol-toggle button.active {
+  border-color: #72aaa4;
+  background: #dbf0ec;
+  color: #124c47;
+}
+
+.model-config-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.model-config-actions span {
+  color: #607176;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.model-config-actions button,
+.ai-error button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid #9fc9c5;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 12px;
+  color: #124c47;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.model-config-actions button:disabled,
+.ai-error button:disabled {
+  cursor: not-allowed;
+  border-color: #d8e2e3;
+  background: #edf3f4;
+  color: #7b898d;
+}
+
+.github-auth-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #d8e2e3;
+  border-radius: 8px;
+  background: #f7fbfb;
+  padding: 10px;
+}
+
+.github-auth-panel div,
+.github-auth-panel button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.github-auth-panel div {
+  color: #40545a;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.github-auth-panel svg {
+  color: #246b62;
+}
+
+.github-auth-panel button {
+  min-height: 34px;
+  border: 1px solid #9fc9c5;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 10px;
+  color: #124c47;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }
@@ -310,6 +421,23 @@ label {
   padding: 12px;
   color: #9b2e23;
   line-height: 1.55;
+}
+
+.ai-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-error span {
+  flex: 1 1 auto;
+}
+
+.ai-error button {
+  flex: 0 0 auto;
+  border-color: #e0aaa2;
+  color: #8d2b21;
 }
 
 .imported-pr {
@@ -402,21 +530,6 @@ textarea:focus {
   border-color: #3d8179;
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(61, 129, 121, 0.12);
-}
-
-.description-input {
-  height: 116px;
-}
-
-.diff-label {
-  margin-bottom: 0;
-}
-
-.diff-input {
-  height: 400px;
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 0.82rem;
 }
 
 .review-panel {
@@ -592,27 +705,6 @@ textarea:focus {
   border-left-color: #3c7bbf;
 }
 
-.generated-copy {
-  min-height: 370px;
-  margin: 0 16px 16px;
-  overflow: auto;
-  white-space: pre-wrap;
-  border: 1px solid #d8e2e3;
-  border-radius: 8px;
-  background: #172026;
-  padding: 18px;
-  color: #ecf5f4;
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 0.86rem;
-  line-height: 1.7;
-}
-
-.generated-section {
-  display: grid;
-  gap: 12px;
-}
-
 .section-toolbar {
   display: flex;
   align-items: center;
@@ -771,40 +863,6 @@ textarea:focus {
   gap: 5px;
 }
 
-.checklist-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  padding: 16px;
-}
-
-.checklist {
-  min-height: 320px;
-  border: 1px solid #d8e2e3;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.checklist h3 {
-  margin-bottom: 14px;
-  font-size: 1rem;
-}
-
-.checklist p {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin-bottom: 12px;
-  color: #40545a;
-  line-height: 1.55;
-}
-
-.checklist svg {
-  flex: 0 0 auto;
-  margin-top: 3px;
-  color: #267445;
-}
-
 .file-list {
   display: grid;
   gap: 10px;
@@ -892,10 +950,6 @@ textarea:focus {
   .files-panel {
     min-height: auto;
   }
-
-  .diff-input {
-    height: 320px;
-  }
 }
 
 @media (max-width: 760px) {
@@ -910,8 +964,7 @@ textarea:focus {
   }
 
   .metrics-grid,
-  .category-summary,
-  .checklist-grid {
+  .category-summary {
     grid-template-columns: 1fr;
   }
 

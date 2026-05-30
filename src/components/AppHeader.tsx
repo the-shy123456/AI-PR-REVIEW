@@ -17,7 +17,7 @@ export function AppHeader({
         <p className="eyebrow">AI PR Review Assistant</p>
         <h1>GitHub PR 自动审查助手</h1>
         <p className="intro">
-          粘贴公开 GitHub PR 链接，自动拉取标题、描述和 diff，生成风险评分、审查意见和可复制报告。
+          粘贴公开 GitHub PR 链接，自动拉取标题、描述和 diff，生成风险评分、审查意见和 AI 合并建议。
         </p>
       </div>
       <div className="header-actions" aria-label="quick actions">

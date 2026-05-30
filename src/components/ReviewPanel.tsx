@@ -2,13 +2,9 @@ import {
   AlertTriangle,
   Bot,
   CheckCircle2,
-  Clipboard,
-  GitPullRequest,
-  ListChecks,
+  RotateCcw,
   Sparkles,
 } from "lucide-react";
-import { useState } from "react";
-import { copyTextToClipboard } from "../lib/clipboard";
 import type { AiCodeReview, MergeRecommendation } from "../lib/aiCodeReview";
 import type {
   CategorySummary,
@@ -32,11 +28,10 @@ const categoryLabels = {
 };
 
 interface ReviewPanelProps {
-  activeTab: "findings" | "ai" | "description" | "tests";
+  activeTab: "findings" | "ai";
   aiReview: AiCodeReview | null;
   aiReviewError: string;
   aiReviewLoading: boolean;
-  fullReport: string;
   onAiReview: () => void;
   onTabChange: (tab: ReviewPanelProps["activeTab"]) => void;
   report: ReviewReport;
@@ -47,24 +42,10 @@ export function ReviewPanel({
   aiReview,
   aiReviewError,
   aiReviewLoading,
-  fullReport,
   onAiReview,
   onTabChange,
   report,
 }: ReviewPanelProps) {
-  const [copyStatus, setCopyStatus] = useState("");
-
-  async function copyGeneratedText(label: string, value: string) {
-    try {
-      const copied = await copyTextToClipboard(value);
-      setCopyStatus(copied ? `${label}已复制` : `${label}复制失败`);
-    } catch {
-      setCopyStatus(`${label}复制失败`);
-    }
-
-    window.setTimeout(() => setCopyStatus(""), 1800);
-  }
-
   return (
     <section className="review-panel" aria-label="review report">
       <div className="summary-band">
@@ -85,18 +66,6 @@ export function ReviewPanel({
         >
           <Bot size={16} /> AI 代码评审
         </button>
-        <button
-          className={activeTab === "description" ? "active" : ""}
-          onClick={() => onTabChange("description")}
-        >
-          <GitPullRequest size={16} /> PR 描述
-        </button>
-        <button
-          className={activeTab === "tests" ? "active" : ""}
-          onClick={() => onTabChange("tests")}
-        >
-          <ListChecks size={16} /> 测试与交付
-        </button>
       </div>
 
       {activeTab === "findings" && (
@@ -112,21 +81,6 @@ export function ReviewPanel({
         </div>
       )}
 
-      {activeTab === "description" && (
-        <section className="generated-section">
-          <div className="section-toolbar">
-            <span>{copyStatus || "可直接粘贴到 PR 描述"}</span>
-            <button
-              onClick={() => copyGeneratedText("PR 描述", report.prDescription)}
-              type="button"
-            >
-              <Clipboard size={16} /> 复制
-            </button>
-          </div>
-          <pre className="generated-copy">{report.prDescription}</pre>
-        </section>
-      )}
-
       {activeTab === "ai" && (
         <AiReviewSection
           error={aiReviewError}
@@ -134,24 +88,6 @@ export function ReviewPanel({
           onAiReview={onAiReview}
           review={aiReview}
         />
-      )}
-
-      {activeTab === "tests" && (
-        <section className="generated-section">
-          <div className="section-toolbar">
-            <span>{copyStatus || "复制完整报告作为 Review 评论草稿"}</span>
-            <button
-              onClick={() => copyGeneratedText("完整报告", fullReport)}
-              type="button"
-            >
-              <Clipboard size={16} /> 复制
-            </button>
-          </div>
-          <div className="checklist-grid">
-            <Checklist title="测试建议" items={report.testPlan} />
-            <Checklist title="交付检查" items={report.deliveryChecklist} />
-          </div>
-        </section>
       )}
     </section>
   );
@@ -176,7 +112,14 @@ function AiReviewSection({
           <Bot size={16} /> {loading ? "评审中" : review ? "重新评审" : "开始 AI 评审"}
         </button>
       </div>
-      {error && <p className="error-note">{error}</p>}
+      {error && (
+        <section className="error-note ai-error">
+          <span>{error}</span>
+          <button disabled={loading} onClick={onAiReview} type="button">
+            <RotateCcw size={16} /> 重试
+          </button>
+        </section>
+      )}
       {!review && !error && (
         <section className="ai-empty">
           <h3>等待 AI 代码评审</h3>
@@ -274,20 +217,6 @@ function FindingItem({ finding }: { finding: ReviewFinding }) {
       <p>{finding.evidence}</p>
       <p>{finding.recommendation}</p>
     </article>
-  );
-}
-
-function Checklist({ title, items }: { title: string; items: string[] }) {
-  return (
-    <section className="checklist">
-      <h3>{title}</h3>
-      {items.map((item) => (
-        <p key={item}>
-          <CheckCircle2 size={16} />
-          <span>{item}</span>
-        </p>
-      ))}
-    </section>
   );
 }
 

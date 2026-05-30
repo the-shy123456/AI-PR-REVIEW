@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { ChangedFilesPanel } from "./components/ChangedFilesPanel";
 import { MetricsGrid } from "./components/MetricsGrid";
@@ -17,17 +17,29 @@ import {
 import { createMarkdownReport } from "./lib/markdownReport";
 import { analyzePullRequest, type ReviewInput } from "./lib/reviewEngine";
 
-type ReviewTab = "findings" | "ai" | "description" | "tests";
+type ReviewTab = "findings" | "ai";
+const githubAuthMessageType = "ai-pr-review:github-auth";
+const githubAuthStateStorageKey = "ai-pr-review.github-auth-state";
+const githubAuthorizedStorageKey = "ai-pr-review.github-authorized";
 const llmConfigStorageKey = "ai-pr-review.llm-config";
 const defaultLlmConfig: LlmConfig = {
   apiKey: "",
   baseUrl: "https://api.openai.com/v1",
   model: "",
+  protocol: "chat_completions",
 };
 
 export function App() {
+  const [githubAuthorized, setGithubAuthorized] = useState(
+    () => loadSessionValue(githubAuthorizedStorageKey) === "true",
+  );
   const [prUrl, setPrUrl] = useState("");
-  const [llmConfig, setLlmConfig] = useState<LlmConfig>(() => loadLlmConfig());
+  const [savedLlmConfig, setSavedLlmConfig] = useState<LlmConfig>(() =>
+    loadLlmConfig(),
+  );
+  const [draftLlmConfig, setDraftLlmConfig] =
+    useState<LlmConfig>(savedLlmConfig);
+  const [modelConfigSaved, setModelConfigSaved] = useState(false);
   const [pullRequest, setPullRequest] = useState<ReviewInput | null>(null);
   const [aiReview, setAiReview] = useState<AiCodeReview | null>(null);
   const [aiReviewError, setAiReviewError] = useState("");
@@ -40,6 +52,81 @@ export function App() {
     () => (pullRequest ? analyzePullRequest(pullRequest) : null),
     [pullRequest],
   );
+  const modelConfigDirty = useMemo(
+    () => !areLlmConfigsEqual(draftLlmConfig, savedLlmConfig),
+    [draftLlmConfig, savedLlmConfig],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncGitHubAuthStatus() {
+      try {
+        const response = await fetch("/api/github-auth/status", {
+          credentials: "same-origin",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as { authorized?: boolean };
+        if (!cancelled) {
+          setGithubAuthorized(Boolean(payload.authorized));
+          sessionStorage.setItem(
+            githubAuthorizedStorageKey,
+            payload.authorized ? "true" : "false",
+          );
+        }
+      } catch {
+        // Keep the optimistic session marker when the local API is unavailable.
+      }
+    }
+
+    void syncGitHubAuthStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleGitHubAuthMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const payload = event.data as {
+        error?: string;
+        authenticated?: boolean;
+        state?: string;
+        type?: string;
+      };
+      const expectedState = sessionStorage.getItem(githubAuthStateStorageKey);
+
+      if (
+        payload?.type !== githubAuthMessageType ||
+        !payload.state ||
+        payload.state !== expectedState
+      ) {
+        return;
+      }
+
+      sessionStorage.removeItem(githubAuthStateStorageKey);
+
+      if (payload.error || !payload.authenticated) {
+        setError(payload.error || "GitHub 授权失败，请重试。");
+        return;
+      }
+
+      setGithubAuthorized(true);
+      sessionStorage.setItem(githubAuthorizedStorageKey, "true");
+      setError("");
+    }
+
+    window.addEventListener("message", handleGitHubAuthMessage);
+    return () => window.removeEventListener("message", handleGitHubAuthMessage);
+  }, []);
 
   async function analyzeUrl() {
     setError("");
@@ -70,6 +157,34 @@ export function App() {
     setError("");
   }
 
+  function loginWithGitHub() {
+    const state =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    sessionStorage.setItem(githubAuthStateStorageKey, state);
+    const authUrl = `/api/github-auth/start?state=${encodeURIComponent(state)}`;
+    const popup = window.open(
+      authUrl,
+      "github-auth",
+      "popup=yes,width=720,height=760",
+    );
+
+    if (!popup) {
+      window.location.href = authUrl;
+    }
+  }
+
+  async function logoutGitHub() {
+    setGithubAuthorized(false);
+    sessionStorage.removeItem(githubAuthorizedStorageKey);
+    sessionStorage.removeItem(githubAuthStateStorageKey);
+    await fetch("/api/github-auth/logout", {
+      credentials: "same-origin",
+      method: "POST",
+    }).catch(() => undefined);
+  }
+
   async function analyzeCodeWithAi() {
     if (!pullRequest || !report) {
       return;
@@ -80,7 +195,7 @@ export function App() {
     setActiveTab("ai");
 
     try {
-      setAiReview(await requestAiCodeReview(pullRequest, report, llmConfig));
+      setAiReview(await requestAiCodeReview(pullRequest, report, savedLlmConfig));
     } catch (caught) {
       setAiReviewError(
         caught instanceof Error
@@ -90,6 +205,15 @@ export function App() {
     } finally {
       setAiReviewLoading(false);
     }
+  }
+
+  function saveModelConfig() {
+    setSavedLlmConfig(draftLlmConfig);
+    saveLlmConfig(draftLlmConfig);
+    setModelConfigSaved(true);
+    window.setTimeout(() => {
+      setModelConfigSaved(false);
+    }, 1800);
   }
 
   function downloadReport() {
@@ -126,22 +250,25 @@ export function App() {
         <div className="left-stack">
           <PullRequestImporter
             error={error}
+            githubAuthorized={githubAuthorized}
             loading={loading}
             onAnalyze={analyzeUrl}
+            onGithubLogin={loginWithGitHub}
+            onGithubLogout={logoutGitHub}
             onUrlChange={setPrUrl}
             sourceUrl={pullRequest?.sourceUrl}
             title={pullRequest?.title}
             url={prUrl}
           />
           <ModelConfigPanel
-            config={llmConfig}
+            config={draftLlmConfig}
+            isDirty={modelConfigDirty}
             onChange={(nextConfig) => {
-              setLlmConfig(nextConfig);
-              sessionStorage.setItem(
-                llmConfigStorageKey,
-                JSON.stringify(nextConfig),
-              );
+              setDraftLlmConfig(nextConfig);
+              setModelConfigSaved(false);
             }}
+            onSave={saveModelConfig}
+            saved={modelConfigSaved}
           />
         </div>
         {report && pullRequest ? (
@@ -150,7 +277,6 @@ export function App() {
             aiReview={aiReview}
             aiReviewError={aiReviewError}
             aiReviewLoading={aiReviewLoading}
-            fullReport={createMarkdownReport(pullRequest, report, aiReview)}
             onAiReview={analyzeCodeWithAi}
             onTabChange={setActiveTab}
             report={report}
@@ -158,7 +284,7 @@ export function App() {
         ) : (
           <section className="review-panel placeholder-panel">
             <h2>PR 分析结果</h2>
-            <p>这里会显示风险评分、审查意见、生成的 PR 描述和测试建议。</p>
+            <p>这里会显示风险评分、审查意见、AI 代码评审和合并建议。</p>
           </section>
         )}
         <ChangedFilesPanel files={report?.changedFiles ?? []} />
@@ -176,9 +302,19 @@ function sanitizeFileName(value: string) {
     .slice(0, 80);
 }
 
+function loadSessionValue(key: string) {
+  try {
+    return sessionStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function loadLlmConfig(): LlmConfig {
   try {
-    const saved = sessionStorage.getItem(llmConfigStorageKey);
+    const saved =
+      localStorage.getItem(llmConfigStorageKey) ??
+      sessionStorage.getItem(llmConfigStorageKey);
     return saved
       ? {
           ...defaultLlmConfig,
@@ -188,4 +324,29 @@ function loadLlmConfig(): LlmConfig {
   } catch {
     return defaultLlmConfig;
   }
+}
+
+function saveLlmConfig(config: LlmConfig) {
+  const serializedConfig = JSON.stringify(config);
+
+  try {
+    localStorage.setItem(llmConfigStorageKey, serializedConfig);
+  } catch {
+    // Ignore storage failures; the current in-memory draft still remains usable.
+  }
+
+  try {
+    sessionStorage.setItem(llmConfigStorageKey, serializedConfig);
+  } catch {
+    // Ignore storage failures; the current in-memory draft still remains usable.
+  }
+}
+
+function areLlmConfigsEqual(left: LlmConfig, right: LlmConfig) {
+  return (
+    left.apiKey === right.apiKey &&
+    left.baseUrl === right.baseUrl &&
+    left.model === right.model &&
+    left.protocol === right.protocol
+  );
 }

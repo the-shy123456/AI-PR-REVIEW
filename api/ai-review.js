@@ -6,6 +6,12 @@ export default async function handler(request, response) {
     return;
   }
 
-  const result = await handleAiReviewRequest(request.body);
-  response.status(result.status).json(result.body);
+  try {
+    const result = await handleAiReviewRequest(request.body);
+    response.status(result.status).json(result.body);
+  } catch (error) {
+    response.status(500).json({
+      error: error instanceof Error ? error.message : "AI Review server error",
+    });
+  }
 }

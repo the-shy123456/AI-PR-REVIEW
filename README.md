@@ -1,6 +1,6 @@
 # AI PR Review Assistant
 
-AI PR Review Assistant 是一个面向 GitHub Pull Request 的自动审查助手。用户粘贴公开 GitHub PR 链接后，系统会自动拉取 PR 标题、描述和 diff，生成结构化风险评分、审查意见、测试建议和可复制 Review 报告。
+AI PR Review Assistant 是一个面向 GitHub Pull Request 的自动审查助手。用户粘贴公开 GitHub PR 链接后，系统会自动拉取 PR 标题、描述和 diff，生成结构化风险评分、审查意见、AI 代码质量评价和可导出 Review 报告。
 
 项目同时提供网页端和浏览器插件版本：
 
@@ -9,8 +9,8 @@ AI PR Review Assistant 是一个面向 GitHub Pull Request 的自动审查助手
 
 ## Demo
 
-- 在线演示链接：待部署后补充
-- Demo 视频链接：待录制后补充
+- 公开仓库：[the-shy123456/AI-RP-REVIEW](https://github.com/the-shy123456/AI-RP-REVIEW)
+- Demo 视频：[demo.mp4](https://github.com/the-shy123456/AI-RP-REVIEW/releases/download/demo-video/demo.mp4)
 
 ## 界面预览
 
@@ -27,10 +27,7 @@ AI PR Review Assistant 是一个面向 GitHub Pull Request 的自动审查助手
 - 结构化审查意见：覆盖安全、测试、可靠性、可维护性和流程规范。
 - AI 代码质量评审：大模型阅读 PR diff，评价代码质量、漏洞风险、测试充分性、考虑是否周到，并给出合并建议。
 - 变更文件解析：从 PR diff 中识别文件状态、增删行数量。
-- PR 描述生成：按比赛规范生成“功能描述 / 实现思路 / 测试方式 / Review 关注点”。
-- 测试与交付检查：提醒补充测试、README 依赖说明和主分支可运行要求。
 - Markdown 报告导出：可下载 Review 结果作为评审记录或 PR 评论草稿。
-- 一键复制：可复制 PR 描述或完整 Review 报告。
 - 浏览器插件：在 GitHub PR 页面内直接分析当前 PR。
 
 ## 当前规则
@@ -67,7 +64,7 @@ AI 代码评审负责规则难以覆盖的主观质量判断：
 - `src/lib/reviewEngine.ts` 中的 diff 解析、风险规则、评分模型和文案生成逻辑。
 - React PR 分析界面与信息架构。
 - Manifest V3 GitHub PR 页面分析插件。
-- 面向参赛 PR 规范的交付检查清单。
+- 面向参赛 PR 规范的过程风险识别规则。
 
 第三方库用于工程搭建、UI 图标、测试和构建，不包含核心 Review 规则模型。
 
@@ -80,7 +77,7 @@ AI 代码评审负责规则难以覆盖的主观质量判断：
 - ESLint 9.19.0：代码规范检查。
 - lucide-react 0.475.0：按钮与模块图标。
 - Chrome/Edge Manifest V3：浏览器插件版本。
-- OpenAI Responses API：AI 代码质量评审。
+- OpenAI-compatible Chat Completions / OpenAI Responses API：AI 代码质量评审。
 
 完整依赖版本以 `package.json` 和 `package-lock.json` 为准。
 
@@ -97,7 +94,9 @@ npm run dev
 http://127.0.0.1:5173
 ```
 
-如需启用 AI 代码评审，先启动后端 API：
+开发模式下 `npm run dev` 已经内置 `/api/ai-review`，页面里的 AI 代码评审可以直接使用。
+
+如果需要把 AI Review API 作为独立服务运行，可以另开终端启动：
 
 ```bash
 npm run dev:api
@@ -109,11 +108,39 @@ npm run dev:api
 http://127.0.0.1:8787/api/ai-review
 ```
 
-然后在页面“大模型配置”里填写：
+在页面“大模型配置”里填写：
 
+- `协议`：选择 `Chat Completions` 或 `OpenAI Responses`。
 - `BASE_URL`：第三方大模型 OpenAI-compatible 地址，例如 `https://api.openai.com/v1`、`https://api.deepseek.com/v1`。
 - `API_KEY`：对应平台的 API Key。
 - `MODEL`：模型名，例如 `gpt-4o-mini`、`deepseek-chat`、`qwen-plus`。
+
+如果 GitHub 匿名 API 返回 403，可以在“PR 链接”区域点击“登录 GitHub”走 OAuth 授权。授权 token 由后端写入 `HttpOnly` 会话 Cookie，前端只保存“已授权”状态，用于读取 PR metadata 和 diff。
+
+GitHub 登录是标准 OAuth 流程：终端用户只点击“登录 GitHub”，然后跳转到 GitHub 用自己的账号授权。下面两个值是部署者在 GitHub OAuth App 后台登记本应用时获得的服务端配置，不是给终端用户填写的账号信息。
+
+本地开发需要先在 GitHub OAuth App 中配置回调地址：
+
+```text
+http://127.0.0.1:5173/api/github-auth/callback
+```
+
+然后设置：
+
+```bash
+$env:GITHUB_CLIENT_ID="你的 GitHub OAuth Client ID"
+$env:GITHUB_CLIENT_SECRET="你的 GitHub OAuth Client Secret"
+npm run dev
+```
+
+也可以复制 `.env.example` 为 `.env.local` 后填入同样的配置。未配置时，登录入口会提示“GitHub 登录暂未启用”；配置后点击按钮会直接跳转 GitHub 登录/授权页面。
+
+也可以在后端环境变量中配置 `GITHUB_TOKEN` 作为服务端默认授权。
+
+协议说明：
+
+- `Chat Completions`：调用 `{BASE_URL}/chat/completions`，适合 DeepSeek、通义千问等 OpenAI-compatible 第三方服务。
+- `OpenAI Responses`：调用 `{BASE_URL}/responses`，适合支持 OpenAI Responses API 和 JSON Schema 结构化输出的模型服务。
 
 也可以用后端环境变量作为默认值：
 
@@ -121,7 +148,8 @@ http://127.0.0.1:8787/api/ai-review
 $env:OPENAI_BASE_URL="https://api.openai.com/v1"
 $env:OPENAI_API_KEY="你的 API Key"
 $env:OPENAI_MODEL="gpt-4o-mini"
-npm run dev:api
+$env:OPENAI_PROTOCOL="responses"
+npm run dev
 ```
 
 ## 使用方式
@@ -134,9 +162,9 @@ https://github.com/owner/repo/pull/123
 ```
 
 3. 点击“分析 PR”。
-4. 查看风险评分、审查意见、PR 描述、测试建议和交付检查。
-5. 在“大模型配置”中填写 `BASE_URL`、`API_KEY`、`MODEL` 后，点击“AI 代码评审”获取代码质量评价和合并建议。
-6. 复制或导出 Markdown 报告。
+4. 查看风险评分、审查意见、AI 代码评审和变更文件统计。
+5. 在“大模型配置”中选择协议并填写 `BASE_URL`、`API_KEY`、`MODEL` 后，点击“AI 代码评审”获取代码质量评价和合并建议。
+6. 导出 Markdown Review 报告。
 
 ## 浏览器插件
 
@@ -190,7 +218,7 @@ npm run lint
 
 ## 后续规划
 
-- 支持 GitHub Token 配置以提高 API rate limit。
+- 支持 GitHub Enterprise 和更细粒度仓库授权。
 - 支持 GitHub Enterprise 和 Gitee PR。
 - 支持团队自定义规则集。
 - 支持把 AI Review 结果自动发布为 GitHub PR 评论。

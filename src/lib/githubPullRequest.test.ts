@@ -27,29 +27,22 @@ describe("parseGitHubPullRequestUrl", () => {
 
 describe("fetchGitHubPullRequest", () => {
   it("fetches metadata and diff for a public PR", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            body: "实现 PR URL 导入",
-            html_url: "https://github.com/acme/app/pull/7",
-            number: 7,
-            title: "feat: import pull request",
-          }),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          `diff --git a/src/a.ts b/src/a.ts
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          description: "实现 PR URL 导入",
+          diff: `diff --git a/src/a.ts b/src/a.ts
 --- a/src/a.ts
 +++ b/src/a.ts
 @@ -1 +1,2 @@
 +export const ok = true;`,
-          { status: 200 },
-        ),
-      );
+          mode: "competition",
+          sourceUrl: "https://github.com/acme/app/pull/7",
+          title: "feat: import pull request",
+        }),
+        { status: 200 },
+      ),
+    );
 
     await expect(
       fetchGitHubPullRequest(
@@ -69,23 +62,24 @@ describe("fetchGitHubPullRequest", () => {
     });
 
     expect(fetcher).toHaveBeenCalledWith(
-      "https://api.github.com/repos/acme/app/pulls/7",
-      expect.any(Object),
-    );
-    expect(fetcher).toHaveBeenCalledWith(
-      "https://api.github.com/repos/acme/app/pulls/7",
-      { headers: { Accept: "application/vnd.github.v3.diff" } },
+      "/api/github-pr",
+      expect.objectContaining({
+        body: expect.not.stringContaining("githubToken"),
+        credentials: "same-origin",
+        method: "POST",
+      }),
     );
   });
 
   it("surfaces GitHub API failures", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response("not found", { status: 404 }))
-      .mockResolvedValueOnce(new Response("", { status: 200 }));
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "无法读取 PR diff" }), {
+        status: 404,
+      }),
+    );
 
     await expect(
       importGitHubPullRequest("https://github.com/acme/app/pull/404", fetcher),
-    ).rejects.toThrow("无法读取 PR 元数据");
+    ).rejects.toThrow("无法读取 PR diff");
   });
 });

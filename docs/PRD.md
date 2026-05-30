@@ -7,22 +7,22 @@
 ## Requirements
 
 - 用户可以输入公开 GitHub PR 链接。
-- 用户可以在页面配置第三方大模型 `BASE_URL`、`API_KEY`、`MODEL`。
+- 用户可以登录 GitHub 授权，避免匿名 API 限流影响 PR 导入。
+- 用户可以在页面配置第三方大模型协议、`BASE_URL`、`API_KEY`、`MODEL`。
 - 系统可以自动拉取 PR 标题、描述和 diff。
 - 系统可以解析变更文件、文件状态、增删行数量。
 - 系统可以识别安全、测试、可靠性、可维护性和流程规范风险。
 - 系统可以生成风险评分、风险等级和审查建议。
 - 系统可以调用大模型对变更代码进行质量评审。
 - 系统可以输出代码质量分、维度评价、AI 发现的问题和合并建议。
-- 系统可以生成符合比赛 PR 规范的 PR 描述草稿。
-- 系统可以输出测试建议和交付检查清单。
 - 用户可以通过浏览器插件在 GitHub PR 页面直接分析当前 PR。
 
 ## Acceptance Criteria
 
 - [ ] 打开首页即可看到 GitHub PR URL 导入入口。
 - [ ] 输入公开 GitHub PR URL 后可以自动拉取并分析。
-- [ ] 页面填写 `BASE_URL`、`API_KEY`、`MODEL` 后可以运行 AI 代码评审。
+- [ ] 完成 GitHub 登录授权后，PR 导入请求使用授权访问 GitHub。
+- [ ] 页面选择协议并填写 `BASE_URL`、`API_KEY`、`MODEL` 后可以运行 AI 代码评审。
 - [ ] AI 代码评审包含总体评价、代码质量分、问题列表和合并建议。
 - [ ] 浏览器插件可加载到 Chrome/Edge，并在 GitHub PR 页面显示分析按钮。
 - [ ] `npm run test` 通过。
@@ -31,19 +31,19 @@
 
 ## Technical Approach
 
-MVP 的 GitHub PR 导入和规则分析在前端完成；AI 代码评审通过后端接口完成。页面提供第三方大模型配置入口，支持 OpenAI-compatible `BASE_URL`、`API_KEY`、`MODEL`。GitHub PR 导入逻辑放在 `src/lib/githubPullRequest.ts`，核心规则 Review 逻辑放在 `src/lib/reviewEngine.ts`，AI 评审逻辑放在 `server/aiReviewCore.mjs`。
+MVP 的 GitHub PR 导入通过后端代理完成，规则分析在前端完成；AI 代码评审通过后端接口完成。页面提供第三方大模型配置入口，支持协议选择、OpenAI-compatible `BASE_URL`、`API_KEY`、`MODEL`。GitHub PR 导入逻辑放在 `src/lib/githubPullRequest.ts`，OAuth 与 GitHub 读取逻辑放在 `server/githubAuthCore.mjs`、`server/githubPullRequestCore.mjs`，核心规则 Review 逻辑放在 `src/lib/reviewEngine.ts`，AI 评审逻辑放在 `server/aiReviewCore.mjs`。
 
 ## Decision
 
 Context：参赛作品需要快速可演示，同时要能体现架构清晰和测试覆盖。
 
-Decision：使用 Vite + React + TypeScript + Vitest。网页端支持 GitHub PR URL 自动导入；插件端使用 Manifest V3 content script。AI 代码质量评审通过 OpenAI Responses API 和结构化 JSON 输出完成。
+Decision：使用 Vite + React + TypeScript + Vitest。网页端支持 GitHub PR URL 自动导入；插件端使用 Manifest V3 content script。AI 代码质量评审支持 OpenAI-compatible Chat Completions 和 OpenAI Responses API，其中 Responses 协议使用 JSON Schema 结构化输出。
 
-Consequences：MVP 可直接分析公开 GitHub PR，演示路径清晰；AI 评审需要后端环境变量 `OPENAI_API_KEY`。不足是 GitHub API rate limit 受匿名访问限制，且暂不支持私有仓库和 Gitee。
+Consequences：MVP 可直接分析公开 GitHub PR，演示路径清晰；GitHub OAuth 登录可以缓解匿名 API rate limit，AI 评审需要用户在页面或后端环境变量中配置大模型。暂不支持私有仓库和 Gitee。
 
 ## Out of Scope
 
-- 不在 MVP 中接入 GitHub/Gitee OAuth 或私有仓库授权。
+- 不在 MVP 中接入 Gitee OAuth 或私有仓库授权。
 - 不在 MVP 中写入仓库评论或自动合并 PR。
 - 不伪造历史 commit 或 PR 时间线。
 

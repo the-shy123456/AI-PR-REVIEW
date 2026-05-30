@@ -33,11 +33,14 @@ export default tseslint.config(
     files: ["extension/**/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
-      globals: globals.browser,
+      globals: {
+        ...globals.browser,
+        chrome: "readonly",
+      },
     },
   },
   {
-    files: ["server/**/*.mjs", "api/**/*.js"],
+    files: ["server/**/*.mjs", "api/**/*.js", "vite.config.js"],
     languageOptions: {
       ecmaVersion: 2022,
       globals: {

@@ -90,18 +90,6 @@ ${fileLines}
 ${findingLines}
 
 ${aiReviewLines}
-
-## 建议 PR 描述
-
-${report.prDescription}
-
-## 测试建议
-
-${report.testPlan.map((item) => `- ${item}`).join("\n")}
-
-## 交付检查
-
-${report.deliveryChecklist.map((item) => `- ${item}`).join("\n")}
 `;
 }
 

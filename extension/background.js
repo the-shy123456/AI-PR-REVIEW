@@ -1,6 +1,7 @@
 const MAX_DIFF_CHARS = 90000;
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_PROTOCOL = "chat_completions";
+const LOCAL_API_ORIGIN = "http://127.0.0.1:5173";
 const SYSTEM_PROMPT =
   "你是资深代码审查工程师。请基于 PR diff 做严格但务实的代码评审，关注漏洞、边界条件、可维护性、完整性、测试缺口和合并风险。只输出 JSON，不要输出 Markdown。";
 const JSON_OUTPUT_INSTRUCTION =
@@ -72,7 +73,202 @@ const responseSchema = {
   type: "object",
 };
 
-export async function handleAiReviewRequest(payload, fetcher = fetch) {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  handleRuntimeMessage(message)
+    .then(sendResponse)
+    .catch((error) => {
+      sendResponse({
+        body: {
+          error:
+            error instanceof Error
+              ? error.message
+              : "AI 代码评审失败，请稍后重试。",
+        },
+        status: 500,
+      });
+    });
+
+  return true;
+});
+
+async function handleRuntimeMessage(message) {
+  if (message?.type === "AI_PR_REVIEW_REQUEST") {
+    return handleAiReviewRequest(message.payload);
+  }
+
+  if (message?.type === "GITHUB_AUTH_STATUS_REQUEST") {
+    return fetchLocalJson("/api/github-auth/status");
+  }
+
+  if (message?.type === "GITHUB_AUTH_LOGOUT_REQUEST") {
+    return fetchLocalJson("/api/github-auth/logout", { method: "POST" });
+  }
+
+  if (message?.type === "GITHUB_PR_IMPORT_REQUEST") {
+    return importGitHubPullRequest(message.payload);
+  }
+
+  return {
+    body: { error: "Unsupported extension message." },
+    status: 400,
+  };
+}
+
+async function fetchLocalJson(path, options = {}) {
+  try {
+    const response = await fetch(`${LOCAL_API_ORIGIN}${path}`, {
+      credentials: "include",
+      ...options,
+    });
+    const body = await safeReadJson(response);
+
+    return { body, status: response.status };
+  } catch {
+    return {
+      body: {
+        error: "本地授权服务不可用，请确认网页端 npm run dev 正在运行。",
+      },
+      status: 503,
+    };
+  }
+}
+
+async function importGitHubPullRequest(payload) {
+  const ref = normalizePullRequestRef(payload);
+  if (!ref) {
+    return {
+      body: { error: "缺少 owner、repo 或 pullNumber。" },
+      status: 400,
+    };
+  }
+
+  const localResult = await fetchLocalJson("/api/github-pr", {
+    body: JSON.stringify({
+      owner: ref.owner,
+      pullNumber: ref.pullNumber,
+      repo: ref.repo,
+    }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  });
+
+  if (localResult.status === 200) {
+    return localResult;
+  }
+
+  if (localResult.status !== 503) {
+    return {
+      ...localResult,
+      body: {
+        ...localResult.body,
+        authRequired: localResult.status === 403,
+      },
+    };
+  }
+
+  return importPublicGitHubPullRequest(ref);
+}
+
+async function importPublicGitHubPullRequest(ref) {
+  const [metadataResult, diffResult] = await Promise.all([
+    fetchPullRequestMetadata(ref),
+    fetchPullRequestDiff(ref),
+  ]);
+
+  if (!diffResult.ok) {
+    return {
+      body: {
+        authRequired: diffResult.status === 403,
+        error: `无法读取 PR diff，GitHub 返回 ${diffResult.status}。请登录 GitHub 后重试。`,
+      },
+      status: diffResult.status,
+    };
+  }
+
+  const metadata = metadataResult.ok ? metadataResult.value : null;
+
+  return {
+    body: {
+      description: metadata?.body || "",
+      diff: diffResult.value,
+      mode: "competition",
+      sourceUrl: metadata?.html_url || ref.url,
+      title: metadata?.title || `${ref.owner}/${ref.repo}#${ref.pullNumber}`,
+    },
+    status: 200,
+  };
+}
+
+async function fetchPullRequestMetadata(ref) {
+  const response = await safeFetch(
+    `https://api.github.com/repos/${ref.owner}/${ref.repo}/pulls/${ref.pullNumber}`,
+    { headers: { Accept: "application/vnd.github+json" } },
+  );
+
+  if (!response?.ok) {
+    return { ok: false, status: response?.status || 502 };
+  }
+
+  return { ok: true, value: await response.json() };
+}
+
+async function fetchPullRequestDiff(ref) {
+  const apiDiff = await safeFetch(
+    `https://api.github.com/repos/${ref.owner}/${ref.repo}/pulls/${ref.pullNumber}`,
+    { headers: { Accept: "application/vnd.github.v3.diff" } },
+  );
+
+  if (apiDiff?.ok) {
+    const diff = await apiDiff.text();
+    if (diff.trim()) {
+      return { ok: true, value: diff };
+    }
+  }
+
+  const publicDiff = await safeFetch(`${ref.url}.diff`, {
+    credentials: "include",
+    headers: { Accept: "text/plain" },
+  });
+
+  if (publicDiff?.ok) {
+    const diff = await publicDiff.text();
+    if (diff.trim()) {
+      return { ok: true, value: diff };
+    }
+  }
+
+  return {
+    ok: false,
+    status: apiDiff?.status || publicDiff?.status || 502,
+  };
+}
+
+async function safeFetch(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    return null;
+  }
+}
+
+function normalizePullRequestRef(payload) {
+  const owner = clean(payload?.owner);
+  const repo = clean(payload?.repo);
+  const pullNumber = Number(payload?.pullNumber);
+
+  if (!owner || !repo || !Number.isInteger(pullNumber) || pullNumber <= 0) {
+    return null;
+  }
+
+  return {
+    owner,
+    repo,
+    pullNumber,
+    url: `https://github.com/${owner}/${repo}/pull/${pullNumber}`,
+  };
+}
+
+async function handleAiReviewRequest(payload) {
   const input = payload?.input;
   const ruleReport = payload?.ruleReport;
 
@@ -87,25 +283,22 @@ export async function handleAiReviewRequest(payload, fetcher = fetch) {
   if (!llmConfig.apiKey) {
     return {
       status: 503,
-      body: {
-        error: "请在页面大模型配置中填写 API_KEY，或在后端环境变量中配置 OPENAI_API_KEY。",
-      },
+      body: { error: "请先在插件面板中保存 API_KEY。" },
     };
   }
 
   if (!llmConfig.model) {
     return {
       status: 400,
-      body: {
-        error: "请在页面大模型配置中填写 MODEL，或在后端环境变量中配置 OPENAI_MODEL。",
-      },
+      body: { error: "请先在插件面板中保存 MODEL。" },
     };
   }
 
-  const prompt = buildPrompt(input, ruleReport);
   const endpoint = buildModelEndpoint(llmConfig);
-  const modelResponse = await requestModel(fetcher, endpoint, {
-    body: JSON.stringify(buildModelRequestBody(llmConfig, prompt)),
+  const modelResponse = await requestModel(endpoint, {
+    body: JSON.stringify(
+      buildModelRequestBody(llmConfig, buildPrompt(input, ruleReport)),
+    ),
     headers: {
       Authorization: `Bearer ${llmConfig.apiKey}`,
       "Content-Type": "application/json",
@@ -142,11 +335,11 @@ export async function handleAiReviewRequest(payload, fetcher = fetch) {
   }
 }
 
-async function requestModel(fetcher, endpoint, options) {
+async function requestModel(endpoint, options) {
   try {
     return {
       ok: true,
-      value: await fetcher(endpoint, options),
+      value: await fetch(endpoint, options),
     };
   } catch (error) {
     return {
@@ -182,11 +375,7 @@ function buildModelErrorMessage(data, status) {
   return `大模型 API 请求失败：${message}`;
 }
 
-export function buildChatCompletionsUrl(baseUrl) {
-  return buildModelEndpoint({ baseUrl, protocol: "chat_completions" });
-}
-
-export function buildModelEndpoint(config) {
+function buildModelEndpoint(config) {
   const protocol = normalizeProtocol(config?.protocol);
   const path = protocol === "responses" ? "/responses" : "/chat/completions";
   const normalized = String(config?.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
@@ -208,24 +397,15 @@ export function buildModelEndpoint(config) {
 
 function resolveLlmConfig(config) {
   return {
-    apiKey: clean(config?.apiKey) || clean(process.env.OPENAI_API_KEY),
-    baseUrl:
-      clean(config?.baseUrl) ||
-      clean(process.env.OPENAI_BASE_URL) ||
-      DEFAULT_BASE_URL,
-    model: clean(config?.model) || clean(process.env.OPENAI_MODEL),
-    protocol: normalizeProtocol(
-      clean(config?.protocol) || clean(process.env.OPENAI_PROTOCOL),
-    ),
+    apiKey: clean(config?.apiKey),
+    baseUrl: clean(config?.baseUrl) || DEFAULT_BASE_URL,
+    model: clean(config?.model),
+    protocol: normalizeProtocol(clean(config?.protocol)),
   };
 }
 
 function normalizeProtocol(value) {
   return value === "responses" ? "responses" : DEFAULT_PROTOCOL;
-}
-
-function clean(value) {
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function buildPrompt(input, ruleReport) {
@@ -401,4 +581,8 @@ function normalizeMergeRecommendation(value) {
   return ["approve", "comment", "request_changes"].includes(value)
     ? value
     : "comment";
+}
+
+function clean(value) {
+  return typeof value === "string" ? value.trim() : "";
 }

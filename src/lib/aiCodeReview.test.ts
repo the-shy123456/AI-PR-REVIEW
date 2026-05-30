@@ -35,6 +35,7 @@ describe("requestAiCodeReview", () => {
           apiKey: "sk-test",
           baseUrl: "https://api.example.com/v1",
           model: "test-model",
+          protocol: "chat_completions",
         },
         fetcher,
       ),
@@ -44,6 +45,12 @@ describe("requestAiCodeReview", () => {
       "/api/ai-review",
       expect.objectContaining({
         body: expect.stringContaining("\"model\":\"test-model\""),
+      }),
+    );
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/ai-review",
+      expect.objectContaining({
+        body: expect.stringContaining("\"protocol\":\"chat_completions\""),
       }),
     );
   });
@@ -63,6 +70,7 @@ describe("requestAiCodeReview", () => {
           apiKey: "",
           baseUrl: "",
           model: "",
+          protocol: "chat_completions",
         },
         fetcher,
       ),

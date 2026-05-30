@@ -49,7 +49,12 @@
 
 ## AI 代码评审
 
-AI 评审由 `/api/ai-review` 后端接口提供。页面提供 `BASE_URL`、`API_KEY`、`MODEL` 三项配置，支持第三方 OpenAI-compatible 大模型。
+AI 评审由 `/api/ai-review` 后端接口提供。页面提供协议、`BASE_URL`、`API_KEY`、`MODEL` 配置，支持第三方 OpenAI-compatible 大模型。
+
+支持协议：
+
+- `Chat Completions`：适合兼容 `/chat/completions` 的第三方服务。
+- `OpenAI Responses`：适合支持 `/responses` 和 JSON Schema 结构化输出的服务。
 
 AI 评审输出：
 
