@@ -48,11 +48,13 @@ export async function createGitHubAuthCallbackResponse(
   const clientSecret = clean(process.env.GITHUB_CLIENT_SECRET);
   const safeState = clean(state);
   const expectedState = readCookie(cookieHeader, GITHUB_OAUTH_STATE_COOKIE);
+  const extensionMode = safeState.startsWith("extension-");
 
   if (!clientId || !clientSecret) {
     return htmlResponse(
       renderCallbackPage({
         error: OAUTH_NOT_CONFIGURED_MESSAGE,
+        extensionMode,
         origin,
         state,
       }),
@@ -63,6 +65,7 @@ export async function createGitHubAuthCallbackResponse(
     return htmlResponse(
       renderCallbackPage({
         error: "GitHub OAuth 状态校验失败，请回到应用重试。",
+        extensionMode,
         origin,
         state: safeState,
       }),
@@ -74,6 +77,7 @@ export async function createGitHubAuthCallbackResponse(
     return htmlResponse(
       renderCallbackPage({
         error: "GitHub OAuth 回调缺少 code。",
+        extensionMode,
         origin,
         state: safeState,
       }),
@@ -90,6 +94,7 @@ export async function createGitHubAuthCallbackResponse(
     return htmlResponse(
       renderCallbackPage({
         error: tokenResult.error,
+        extensionMode,
         origin,
         state: safeState,
       }),
@@ -100,6 +105,7 @@ export async function createGitHubAuthCallbackResponse(
   return htmlResponse(
     renderCallbackPage({
       authenticated: true,
+      extensionMode,
       origin,
       state: safeState,
     }),
@@ -201,12 +207,14 @@ function htmlResponse(body, cookies = []) {
 function renderCallbackPage({
   authenticated = false,
   error = "",
+  extensionMode = false,
   origin,
   state = "",
 }) {
   const message = JSON.stringify({
     authenticated,
     error,
+    extensionMode,
     state,
     type: MESSAGE_TYPE,
   });
@@ -223,7 +231,15 @@ function renderCallbackPage({
       const message = ${message};
       const authenticatedKey = "ai-pr-review.github-authorized";
       const stateKey = "ai-pr-review.github-auth-state";
-      if (window.opener) {
+      if (message.extensionMode) {
+        if (message.error) {
+          document.body.textContent = message.error;
+        } else if (message.authenticated) {
+          document.body.innerHTML = "<h1>GitHub 授权完成</h1><p>请回到 GitHub PR 页面继续使用 AI PR Review 插件。</p><button type='button' onclick='window.close()'>关闭窗口</button>";
+        } else {
+          document.body.textContent = "GitHub 授权状态校验失败，请回到 GitHub PR 页面重试。";
+        }
+      } else if (window.opener) {
         window.opener.postMessage(message, ${JSON.stringify(origin)});
         window.close();
       } else if (message.error) {
