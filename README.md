@@ -11,6 +11,7 @@ AI PR Review Assistant 是一个面向 GitHub Pull Request 的自动审查助手
 
 - 公开仓库：[the-shy123456/AI-RP-REVIEW](https://github.com/the-shy123456/AI-RP-REVIEW)
 - Demo 视频：[AI-PR-REVIEW.mp4](https://www.bilibili.com/video/BV13qVn61Eth)
+- 在线体验：[AI-PR-REVIEW](https://chige.9e.nz)
 
 ## 界面预览
 
